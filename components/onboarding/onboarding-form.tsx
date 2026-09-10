@@ -74,9 +74,10 @@ function Stepper({
   )
 }
 
-export function OnboardingForm() {
+export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 'settings' }) {
   const router = useRouter()
   const completeOnboarding = useAuth((s) => s.completeOnboarding)
+  const updateHousehold = useAuth((s) => s.updateHousehold)
   const household = useAuth((s) => s.household)
 
   const [members, setMembers] = useState(household.members)
@@ -113,14 +114,19 @@ export function OnboardingForm() {
       return
     }
     setError(null)
-    completeOnboarding({
-      ...household,
+    const householdChanges = {
       members,
       children,
       weeklyBudget: budget,
       preferences,
       restrictions,
-    })
+    }
+    if (mode === 'settings') {
+      updateHousehold(householdChanges)
+      toast.success('Configuración guardada correctamente')
+      return
+    }
+    completeOnboarding({ ...household, ...householdChanges })
     toast.success('¡Tu hogar está listo!')
     router.push('/dashboard')
   }
@@ -226,7 +232,7 @@ export function OnboardingForm() {
         )}
 
         <Button size="lg" onClick={handleSubmit}>
-          Generar mi plan semanal
+          {mode === 'settings' ? 'Guardar cambios' : 'Generar mi plan semanal'}
         </Button>
       </CardContent>
     </Card>
