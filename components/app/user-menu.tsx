@@ -51,7 +51,7 @@ export function UserMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/perfil">
+          <Link href="/household">
             <UserCog className="size-4" />
             Mi hogar
           </Link>

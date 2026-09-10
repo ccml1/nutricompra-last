@@ -16,6 +16,7 @@ import {
   Utensils,
 } from 'lucide-react'
 import { AppSidebar } from '@/components/app/app-sidebar'
+import { AuthGuard } from '@/components/app/auth-guard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,7 +41,8 @@ export default function DashboardPage() {
   ]).slice(0, 4)
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <AuthGuard>
+      <div className="min-h-screen bg-muted/30">
       <AppSidebar />
       <main className="lg:pl-64">
         <header className="border-b bg-background/90 px-5 py-5 backdrop-blur lg:px-10">
@@ -109,6 +111,7 @@ export default function DashboardPage() {
           <section aria-labelledby="quick-title"><h2 id="quick-title" className="mb-4 font-heading text-xl font-bold tracking-tight">Accesos rápidos</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{quickActions.map(({ href, label, icon: Icon, tone }) => <Link key={href} href={href} className="group flex items-center gap-3 rounded-xl border bg-background p-4 transition-colors hover:border-primary/40 hover:bg-primary/[0.03]"><div className={`flex size-10 items-center justify-center rounded-lg ${tone}`}><Icon className="size-5" aria-hidden /></div><span className="flex-1 text-sm font-semibold">{label}</span><ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden /></Link>)}</div></section>
         </div>
       </main>
-    </div>
+      </div>
+    </AuthGuard>
   )
 }
