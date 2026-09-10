@@ -1,9 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Apple, Beef, Carrot, ChevronRight, CircleDot, Fish, Search, Wheat } from 'lucide-react'
+import { Apple, Beef, Carrot, ChevronRight, CircleDot, Fish, Menu, Search, Wheat } from 'lucide-react'
+import { AppSidebar } from '@/components/app/app-sidebar'
+import { Button } from '@/components/ui/button'
 import { mockFoods, foodCategoryLabels } from '@/data/mock-foods'
 import { mockMeals } from '@/data/mock-meals'
+import { mealTypeLabels } from '@/data/mock-plan'
 import { usePlan } from '@/hooks/use-plan'
 import { dayNutrition } from '@/lib/nutrition'
 import type { Food, Meal, Nutrition } from '@/types'
@@ -76,7 +79,7 @@ function MealResult({ meal, selected, onSelect }: { meal: Meal; selected: boolea
       <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground"><Apple data-icon="inline-start" /></span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{meal.name}</span>
-        <span className="block text-xs text-muted-foreground">{meal.type} · porción individual</span>
+        <span className="block text-xs text-muted-foreground">{mealTypeLabels[meal.type]} · porción individual</span>
       </span>
       <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
     </button>
@@ -112,14 +115,29 @@ export default function NutritionPage() {
   }, [plan])
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
-      <header>
-        <p className="text-sm font-medium text-primary">Decisiones más informadas</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Información nutricional</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">Consulta los nutrientes de tus alimentos y comidas para planificar mejor tu semana.</p>
-      </header>
+    <div className="min-h-screen bg-muted/30">
+      <AppSidebar />
+      <main className="lg:pl-64">
+        <header className="border-b bg-background/90 px-5 py-5 backdrop-blur lg:px-10">
+          <div className="mx-auto flex max-w-7xl items-center gap-3">
+            <Button variant="outline" size="icon" className="lg:hidden" aria-label="Abrir menú">
+              <Menu data-icon="inline-start" />
+            </Button>
+            <div>
+              <p className="text-sm font-medium text-primary">Decisiones más informadas</p>
+              <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Información nutricional</h1>
+            </div>
+          </div>
+        </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.6fr)]">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-7 lg:px-10 lg:py-9">
+          <div>
+            <p className="text-sm font-medium text-primary">Consulta y compara</p>
+            <h2 className="mt-1 font-heading text-xl font-bold tracking-tight">Planifica con mejor información</h2>
+            <p className="mt-2 max-w-2xl text-muted-foreground">Consulta los nutrientes de tus alimentos y comidas para planificar mejor tu semana.</p>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.6fr)]">
         <Card className="h-fit">
           <CardHeader>
             <CardTitle>Buscar alimento o comida</CardTitle>
@@ -161,6 +179,8 @@ export default function NutritionPage() {
           </Card>
         </div>
       </div>
-    </main>
+        </div>
+      </main>
+    </div>
   )
 }
