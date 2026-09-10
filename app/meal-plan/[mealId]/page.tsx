@@ -2,13 +2,17 @@
 
 import Link from 'next/link'
 import { ArrowLeft, CircleDollarSign, Clock3, Menu, Replace, Utensils } from 'lucide-react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { AppSidebar } from '@/components/app/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { mockMealsById } from '@/data/mock-meals'
 import { mealTypeLabels } from '@/data/mock-plan'
+import { usePlan } from '@/hooks/use-plan'
+import { findMealSlot, getMealReplacementCandidates } from '@/lib/recommendations'
+import { useMealPlan } from '@/store/use-meal-plan'
+import type { MealType, Weekday } from '@/types'
 
 const healthStyles = {
   alto: 'border-primary/20 bg-primary/10 text-primary',
@@ -26,7 +30,14 @@ const nutritionItems = [
 
 export default function MealDetailPage() {
   const params = useParams<{ mealId: string }>()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { plan } = usePlan()
+  const replaceMeal = useMealPlan((state) => state.replaceMeal)
   const meal = mockMealsById[params.mealId]
+  const slot = meal ? findMealSlot(plan, meal.id, searchParams.get('day') ?? undefined, searchParams.get('type') as MealType | undefined) : null
+  const candidates = meal ? getMealReplacementCandidates(meal, plan) : []
+  const replacement = candidates[0]
 
   if (!meal) {
     return (
@@ -106,10 +117,20 @@ export default function MealDetailPage() {
             <Card className="flex flex-col justify-between">
               <CardHeader><CardTitle className="text-base">¿Quieres cambiarla?</CardTitle><p className="text-sm text-muted-foreground">Elige otra opción para este momento del día.</p></CardHeader>
               <CardContent>
-                <Button className="w-full" disabled title="Disponible próximamente">
+                <Button
+                  className="w-full"
+                  disabled={!replacement || !slot}
+                  onClick={() => {
+                    if (!replacement || !slot) return
+                    replaceMeal(slot.day as Weekday, slot.mealType, replacement.id)
+                    router.replace(`/meal-plan/${replacement.id}?day=${slot.day}&type=${slot.mealType}`)
+                  }}
+                >
                   <Replace data-icon="inline-start" /> Reemplazar comida
                 </Button>
-                <p className="mt-3 text-center text-xs text-muted-foreground">Esta opción estará disponible próximamente.</p>
+                <p className="mt-3 text-center text-xs text-muted-foreground">
+                  {replacement ? `Te sugerimos: ${replacement.name}` : 'No encontramos otra opción compatible.'}
+                </p>
               </CardContent>
             </Card>
           </section>

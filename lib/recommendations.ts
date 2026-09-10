@@ -1,6 +1,31 @@
-import type { Recommendation, WeekPlan } from '@/types'
+import type { Meal, MealType, Recommendation, WeekPlan } from '@/types'
+import { mockMeals } from '@/data/mock-meals'
 import { summarizePlanBudget } from './budget'
 import { macroDistribution, weekNutritionAverage } from './nutrition'
+
+export function getMealReplacementCandidates(current: Meal, plan: WeekPlan): Meal[] {
+  const planMealIds = new Set(plan.days.flatMap((day) => [day.desayuno.id, day.almuerzo.id, day.cena.id]))
+
+  return mockMeals
+    .filter((meal) => meal.type === current.type && meal.id !== current.id)
+    .sort((a, b) => {
+      const healthScore = { alto: 0, medio: 1, bajo: 2 } as const
+      const availability = Number(planMealIds.has(a.id)) - Number(planMealIds.has(b.id))
+      return availability || healthScore[a.healthScore] - healthScore[b.healthScore] || a.estimatedCost - b.estimatedCost
+    })
+}
+
+export function findMealSlot(plan: WeekPlan, mealId: string, day?: string, mealType?: MealType) {
+  if (day && mealType) {
+    const selectedDay = plan.days.find((item) => item.day === day)
+    if (selectedDay?.[mealType].id === mealId) return { day: selectedDay.day, mealType }
+  }
+
+  const match = plan.days.find((item) => [item.desayuno, item.almuerzo, item.cena].some((meal) => meal.id === mealId))
+  if (!match) return null
+  const type = (['desayuno', 'almuerzo', 'cena'] as const).find((key) => match[key].id === mealId)
+  return type ? { day: match.day, mealType: type } : null
+}
 
 /**
  * Genera recomendaciones a partir de reglas simples sobre el plan. En una

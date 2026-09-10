@@ -27,7 +27,7 @@ const healthStyles = {
   bajo: 'border-destructive/20 bg-destructive/10 text-destructive',
 } as const
 
-function MealCard({ meal }: { meal: Meal }) {
+function MealCard({ meal, day }: { meal: Meal; day: string }) {
   return (
     <article className="flex min-h-44 flex-col rounded-xl border bg-background p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
@@ -50,7 +50,7 @@ function MealCard({ meal }: { meal: Meal }) {
           <p className="mt-0.5 font-heading text-lg font-bold">S/ {meal.estimatedCost.toFixed(2)}</p>
         </div>
         <Link
-          href={`/meal-plan/${meal.id}`}
+          href={`/meal-plan/${meal.id}?day=${day}&type=${meal.type}`}
           className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
           aria-label={`Ver detalle de ${meal.name}`}
         >
@@ -130,7 +130,7 @@ export default function MealPlanPage() {
                 <Card key={day.day}>
                   <CardHeader className="border-b bg-muted/20 px-5 py-4"><CardTitle className="text-lg">{weekdayLabels[day.day]}</CardTitle></CardHeader>
                   <CardContent className="grid gap-3 p-4 md:grid-cols-3">
-                    {mealTypes.map((type) => <MealCard key={`${day.day}-${type}`} meal={day[type]} />)}
+                    {mealTypes.map((type) => <MealCard key={`${day.day}-${type}`} day={day.day} meal={day[type]} />)}
                   </CardContent>
                 </Card>
               ))}
