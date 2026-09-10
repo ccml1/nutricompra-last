@@ -25,10 +25,10 @@ import { budgetLevelLabels } from '@/lib/budget'
 import { usePlan } from '@/hooks/use-plan'
 
 const quickActions = [
-  { href: '/menu', label: 'Ver mi menú', icon: Utensils, tone: 'bg-primary/10 text-primary' },
-  { href: '/compras', label: 'Lista de compras', icon: ShoppingBasket, tone: 'bg-amber-500/10 text-amber-700' },
-  { href: '/precios', label: 'Comparar precios', icon: TrendingDown, tone: 'bg-sky-500/10 text-sky-700' },
-  { href: '/nutricion', label: 'Ver nutrición', icon: Sparkles, tone: 'bg-violet-500/10 text-violet-700' },
+  { href: '/meal-plan', label: 'Ver mi menú', icon: Utensils, tone: 'bg-primary/10 text-primary' },
+  { href: '/shopping-list', label: 'Lista de compras', icon: ShoppingBasket, tone: 'bg-amber-500/10 text-amber-700' },
+  { href: '/prices', label: 'Comparar precios', icon: TrendingDown, tone: 'bg-sky-500/10 text-sky-700' },
+  { href: '/nutrition', label: 'Ver nutrición', icon: Sparkles, tone: 'bg-violet-500/10 text-violet-700' },
 ]
 
 export default function DashboardPage() {
@@ -67,7 +67,7 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium text-primary">Tu resumen semanal</p>
                 <h2 id="budget-title" className="font-heading text-xl font-bold tracking-tight">Así va tu presupuesto</h2>
               </div>
-              <Link href="/compras" className="hidden items-center gap-1 text-sm font-semibold text-primary hover:underline sm:flex">Ver detalle <ArrowRight data-icon="inline-end" /></Link>
+              <Link href="/shopping-list" className="hidden items-center gap-1 text-sm font-semibold text-primary hover:underline sm:flex">Ver detalle <ArrowRight data-icon="inline-end" /></Link>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <Card className="border-primary/20 bg-primary text-primary-foreground">
@@ -94,7 +94,7 @@ export default function DashboardPage() {
 
           <div className="grid gap-6 xl:grid-cols-[1.45fr_1fr]">
             <Card>
-              <CardHeader className="flex-row items-center justify-between"><div><CardTitle>Plan de comidas</CardTitle><p className="mt-1 text-sm text-muted-foreground">Una vista rápida de tu semana</p></div><Link href="/menu"><Button variant="ghost" size="sm">Editar plan <ChevronRight data-icon="inline-end" /></Button></Link></CardHeader>
+              <CardHeader className="flex-row items-center justify-between"><div><CardTitle>Plan de comidas</CardTitle><p className="mt-1 text-sm text-muted-foreground">Una vista rápida de tu semana</p></div><Link href="/meal-plan"><Button variant="ghost" size="sm">Editar plan <ChevronRight data-icon="inline-end" /></Button></Link></CardHeader>
               <CardContent className="overflow-x-auto"><div className="grid min-w-[680px] grid-cols-7 gap-2">{plan.days.map((day) => <div key={day.day} className="rounded-xl border bg-muted/30 p-2.5"><p className="mb-3 text-center text-xs font-bold capitalize text-foreground">{weekdayLabels[day.day].slice(0, 3)}</p><div className="flex flex-col gap-2">{([day.desayuno, day.almuerzo, day.cena]).map((meal) => <div key={meal.id} className="rounded-lg bg-background p-2 shadow-sm"><p className="truncate text-[10px] font-medium text-muted-foreground">{mealTypeLabels[meal.type]}</p><p className="mt-1 line-clamp-2 text-xs font-semibold leading-snug">{meal.name}</p><p className="mt-1 text-[10px] text-muted-foreground">S/ {meal.estimatedCost.toFixed(2)}</p></div>)}</div></div>)}</div></CardContent>
             </Card>
 
