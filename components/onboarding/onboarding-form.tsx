@@ -6,8 +6,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Slider } from '@/components/ui/slider'
+import { Input } from '@/components/ui/input'
 import {
   dietaryPreferenceLabels,
   dietaryRestrictionLabels,
@@ -145,30 +144,32 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
           <Stepper label="Niños" value={children} min={0} max={15} onChange={setChildren} />
         </section>
 
-        <section className="flex flex-col gap-4">
-          <div className="flex items-end justify-between">
-            <div>
-              <h2 className="font-display text-lg font-semibold text-foreground">
-                Presupuesto semanal
-              </h2>
-              <p className="text-sm text-muted-foreground">Cuánto puedes destinar a las compras.</p>
-            </div>
-            <span className="font-display text-2xl font-bold text-primary">
-              {formatCurrency(budget)}
+        <section className="flex flex-col gap-3">
+          <div>
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Presupuesto semanal
+            </h2>
+            <p className="text-sm text-muted-foreground">Cuánto puedes destinar a las compras.</p>
+          </div>
+          <div className="relative max-w-xs">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-medium text-muted-foreground">
+              S/
             </span>
+            <Input
+              type="number"
+              min={20}
+              max={2000}
+              step="0.01"
+              value={budget}
+              onChange={(event) => {
+                const nextBudget = event.currentTarget.valueAsNumber
+                if (Number.isFinite(nextBudget)) setBudget(nextBudget)
+              }}
+              aria-label="Presupuesto semanal en soles"
+              className="pl-9 font-display text-lg font-semibold"
+            />
           </div>
-          <Slider
-            value={[budget]}
-            min={20}
-            max={500}
-            step={5}
-            onValueChange={([v]) => setBudget(v)}
-            aria-label="Presupuesto semanal"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{formatCurrency(20)}</span>
-            <span>{formatCurrency(500)}</span>
-          </div>
+          <p className="text-xs text-muted-foreground">Ingresa un monto entre S/ 20 y S/ 2,000.</p>
         </section>
 
         <section className="flex flex-col gap-3">
