@@ -41,7 +41,7 @@ export const navItems: NavItem[] = [
     description: 'Compara establecimientos',
   },
   {
-    label: 'Recomendaciones',
+    label: 'Nutrición',
     href: '/nutrition',
     icon: Sparkles,
     description: 'Ahorro y nutrición',
