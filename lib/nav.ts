@@ -42,7 +42,7 @@ export const navItems: NavItem[] = [
   },
   {
     label: 'Recomendaciones',
-    href: '/dashboard#recommendations-title',
+    href: '/nutrition',
     icon: Sparkles,
     description: 'Ahorro y nutrición',
   },
