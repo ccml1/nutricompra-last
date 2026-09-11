@@ -48,7 +48,7 @@ export function generateRecommendations(plan: WeekPlan): Recommendation[] {
       )} esta semana. El mercado suele tener los mejores precios en frutas y verduras.`,
       savings: budget.savings,
       actionLabel: 'Ver comparador de precios',
-      actionHref: '/precios',
+      actionHref: '/prices',
     })
   }
 
@@ -60,7 +60,7 @@ export function generateRecommendations(plan: WeekPlan): Recommendation[] {
       message:
         'Considera reemplazar la carne de res por pollo o legumbres en uno o dos almuerzos para reducir el costo sin perder proteína.',
       actionLabel: 'Ajustar menú',
-      actionHref: '/menu',
+      actionHref: '/meal-plan',
     })
   } else if (budget.level === 'ok') {
     recommendations.push({
@@ -70,7 +70,7 @@ export function generateRecommendations(plan: WeekPlan): Recommendation[] {
       message: `Tu plan usa el ${Math.round(
         budget.usedPercent,
       )}% del presupuesto semanal. Te queda margen para incluir una fruta extra al día.`,
-      actionHref: '/menu',
+      actionHref: '/meal-plan',
       actionLabel: 'Ver menú',
     })
   }
@@ -83,7 +83,7 @@ export function generateRecommendations(plan: WeekPlan): Recommendation[] {
       message:
         'Incorpora legumbres como lentejas o frijoles, y más verduras de hoja verde para acercarte a los 25 g de fibra diarios recomendados.',
       actionLabel: 'Ver alimentos',
-      actionHref: '/menu',
+      actionHref: '/meal-plan',
     })
   }
 
