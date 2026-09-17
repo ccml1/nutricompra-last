@@ -1,0 +1,147 @@
+// NutriCompra — Backend data layer
+// Prisma schema for the nutrition domain (Etapa 2.1-B).
+//
+// Scope of this schema (intentionally limited):
+//   - Food
+//   - NutritionalProfile
+//   - DataSource
+//
+// Out of scope for this stage (do NOT add tables for these yet):
+//   Product, Store, Price, Offer, Meal, Recipe, Recommendation, User.
+//
+// See backend/docs/ARCHITECTURE.md for the full rationale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// A normalized food item used by NutriCompra (e.g. "Arroz blanco").
+/// This is the internal representation of an ingredient — independent of
+/// any external nutrition table. It intentionally does NOT carry price,
+/// store, or product information; those belong to future stages.
+model Food {
+  /// Internal identifier. Always an application/DB-generated UUID.
+  /// The 1–78 numeric id used in the original TPCA CSV export is NOT reused
+  /// here, and the TPCA `source_code` (e.g. "A3") is NOT used as the
+  /// primary key either — see DataSource.sourceCode for that.
+  id String @id @default(uuid())
+
+  /// Normalized display name used across NutriCompra (e.g. "Arroz blanco").
+  /// Must be unique so the same ingredient is never registered twice,
+  /// regardless of how many external sources describe it.
+  name String @unique
+
+  /// One of the 11 TPCA categories (Cereales, Legumbres, Tubérculos, Carnes,
+  /// Pescados, Huevos, Lácteos, Frutas, Verduras, Grasas, Otros).
+  /// Stored as a plain string (not a Prisma enum) on purpose: additional
+  /// sources (USDA, Open Food Facts, FAO/INFOODS, LATINFOODS) may introduce
+  /// categories that do not map 1:1 onto these 11 values, and enum changes
+  /// require a migration. Validation of allowed values belongs to the
+  /// application layer (NestJS DTOs), not the database, at this stage.
+  category String
+
+  /// Kind of food record. Currently only "basic" is used (raw/whole foods
+  /// from TPCA). Future values ("commercial", "prepared", "recipe") belong
+  /// to later stages and are intentionally not modeled yet.
+  type String @default("basic")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// 1:1 relation. A Food has at most one NutritionalProfile at this stage.
+  nutritionalProfile NutritionalProfile?
+
+  @@index([category])
+  @@map("foods")
+}
+
+/// The nutritional composition of a Food, expressed per a reference amount
+/// (currently always 100 g). Exactly one NutritionalProfile belongs to
+/// exactly one Food (1:1, enforced by the unique foodId below).
+model NutritionalProfile {
+  id String @id @default(uuid())
+
+  /// 1:1 relation to Food. Unique so a Food can never have more than one
+  /// active nutritional profile.
+  foodId String @unique
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  /// Reference amount the nutrients below are expressed for. Currently
+  /// always 100.
+  referenceAmount Decimal @default(100) @db.Decimal(8, 2)
+
+  /// Reference unit for referenceAmount. Currently always "g".
+  referenceUnit String @default("g")
+
+  /// All nutrient fields are OPTIONAL (nullable) and have NO default value.
+  /// NULL means "the source does not provide this value" (e.g. the TPCA
+  /// used "•" for it). NULL must never be coerced to 0 anywhere in the
+  /// application — a missing value and a measured zero are different facts.
+  energyKcal    Decimal? @db.Decimal(10, 3)
+  proteinG      Decimal? @db.Decimal(10, 3)
+  carbohydrateG Decimal? @db.Decimal(10, 3)
+  fatG          Decimal? @db.Decimal(10, 3)
+  fiberG        Decimal? @db.Decimal(10, 3)
+  sodiumMg      Decimal? @db.Decimal(10, 3)
+  calciumMg     Decimal? @db.Decimal(10, 3)
+  ironMg        Decimal? @db.Decimal(10, 3)
+
+  /// N:1 relation to DataSource: many nutritional profiles may reference the
+  /// same data source record.
+  dataSourceId String
+  dataSource   DataSource @relation(fields: [dataSourceId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("nutritional_profiles")
+}
+
+/// Provenance record for a NutritionalProfile: which external table the
+/// values came from, and how that table identified/named the food. Kept
+/// independent from Food's own (normalized) name for full traceability.
+///
+/// Example (TPCA):
+///   Food.name            = "Arroz blanco"
+///   DataSource.name      = "TPCA"
+///   DataSource.version   = "2023"
+///   DataSource.sourceCode = "A3"
+///   DataSource.sourceName = "Arroz blanco corriente"
+model DataSource {
+  id String @id @default(uuid())
+
+  /// Name of the source table/provider. Initially always "TPCA".
+  /// Future values (not inserted yet): "USDA", "Open Food Facts",
+  /// "FAO/INFOODS", "LATINFOODS".
+  name String
+
+  /// Edition/version of the source. For TPCA: "2023".
+  version String
+
+  /// Original identifier of the record within the source table
+  /// (e.g. "A3", "T52", "F26" for TPCA). This is NEVER used as Food.id.
+  sourceCode String
+
+  /// Original name of the food exactly as it appears in the source table
+  /// (e.g. "Arroz blanco corriente"), unmodified.
+  sourceName String
+
+  /// Optional URL pointing at the published source document/table.
+  sourceUrl String?
+
+  /// Optional free-text notes (e.g. known caveats such as TPCA's own
+  /// "* Imputado Tabla INCAP 2012" footnote for a given record).
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  nutritionalProfiles NutritionalProfile[]
+
+  @@index([name, version, sourceCode])
+  @@map("data_sources")
+}
