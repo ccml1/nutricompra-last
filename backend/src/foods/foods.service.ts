@@ -10,6 +10,12 @@ function toNutrient(value: Prisma.Decimal | null): number | null {
   return value === null ? null : value.toNumber();
 }
 
+/**
+ * Spanish alphabetical order ("Lácteos" before "Legumbres"). The database
+ * compares bytes, which pushes accented letters after every plain letter.
+ */
+const spanish = new Intl.Collator('es');
+
 @Injectable()
 export class FoodsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -22,10 +28,9 @@ export class FoodsService {
   async findAll() {
     const profiles = await this.prisma.nutritionalProfile.findMany({
       include: { food: true, dataSource: true },
-      orderBy: [{ food: { category: 'asc' } }, { food: { name: 'asc' } }],
     });
 
-    return profiles.map((profile) => ({
+    const foods = profiles.map((profile) => ({
       id: profile.food.id,
       name: profile.food.name,
       category: profile.food.category,
@@ -48,5 +53,11 @@ export class FoodsService {
         sourceName: profile.dataSource.sourceName,
       },
     }));
+
+    return foods.sort(
+      (a, b) =>
+        spanish.compare(a.category, b.category) ||
+        spanish.compare(a.name, b.name),
+    );
   }
 }

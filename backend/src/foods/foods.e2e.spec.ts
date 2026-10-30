@@ -46,19 +46,26 @@ const arrozBlancoProfile = {
   },
 };
 
+/** Same profile shape, for another food of the catalog. */
+function profileOf(id: string, name: string, category: string) {
+  return {
+    ...arrozBlancoProfile,
+    foodId: id,
+    food: { ...arrozBlancoProfile.food, id, name, category },
+  };
+}
+
 describe('GET /foods', () => {
   let app: INestApplication;
+  let findMany: jest.Mock;
 
   beforeEach(async () => {
+    findMany = jest.fn().mockResolvedValue([arrozBlancoProfile]);
     const moduleRef = await Test.createTestingModule({
       imports: [PrismaModule, FoodsModule],
     })
       .overrideProvider(PrismaService)
-      .useValue({
-        nutritionalProfile: {
-          findMany: jest.fn().mockResolvedValue([arrozBlancoProfile]),
-        },
-      })
+      .useValue({ nutritionalProfile: { findMany } })
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -134,5 +141,23 @@ describe('GET /foods', () => {
 
     const [food] = response.body;
     expect(food.nutrients).toHaveProperty('fiberG', null);
+  });
+
+  it('ordena por categoría y nombre según el español (Lácteos antes que Legumbres)', async () => {
+    findMany.mockResolvedValueOnce([
+      profileOf('food-lentejas', 'Lentejas', 'Legumbres'),
+      profileOf('food-yogurt', 'Yogurt', 'Lácteos'),
+      profileOf('food-leche', 'Leche fresca entera', 'Lácteos'),
+    ]);
+
+    const response = await request(app.getHttpServer())
+      .get('/foods')
+      .expect(200);
+
+    expect(response.body.map((food: { name: string }) => food.name)).toEqual([
+      'Leche fresca entera',
+      'Yogurt',
+      'Lentejas',
+    ]);
   });
 });
