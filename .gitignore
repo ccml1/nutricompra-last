@@ -8,6 +8,11 @@ __v0_jsx-dev-runtime.ts
 
 # Environment variables
 .env*.local
+.env
+!.env.example
+
+# Backend build output
+backend/dist/
 
 # Common ignores
 node_modules
