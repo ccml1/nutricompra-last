@@ -1,4 +1,7 @@
-import { mapTpcaRow, TpcaCsvRow } from './tpca-csv';
+import { join } from 'path';
+import { mapTpcaRow, readTpcaCsv, TpcaCsvRow } from './tpca-csv';
+
+const csvPath = join(__dirname, '..', 'data', 'nutricompra-foods-v1.csv');
 
 // Row copied verbatim from data/nutricompra-foods-v1.csv (id 2).
 const arrozBlanco: TpcaCsvRow = {
@@ -91,5 +94,17 @@ describe('mapTpcaRow', () => {
     expect(record.food).not.toHaveProperty('id');
     expect(record.profile).not.toHaveProperty('id');
     expect(record.source).not.toHaveProperty('id');
+  });
+});
+
+describe('readTpcaCsv', () => {
+  it('el CSV completo da 78 alimentos con nombres únicos y conserva nombres con comas ("Kiwicha, achita o achis o amaranto")', () => {
+    const records = readTpcaCsv(csvPath);
+
+    expect(records).toHaveLength(78);
+    expect(new Set(records.map((r) => r.food.name)).size).toBe(78);
+    expect(records.map((r) => r.source.sourceName)).toContain(
+      'Kiwicha, achita o achis o amaranto',
+    );
   });
 });

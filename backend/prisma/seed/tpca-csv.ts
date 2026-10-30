@@ -3,6 +3,9 @@
  * three records the seed writes: Food, NutritionalProfile and DataSource.
  */
 
+import { readFileSync } from 'fs';
+import { parse } from 'csv-parse/sync';
+
 /** One CSV row as parsed with headers, every value still a raw string. */
 export interface TpcaCsvRow {
   id: string;
@@ -77,4 +80,15 @@ export function mapTpcaRow(row: TpcaCsvRow): TpcaSeedRecord {
       sourceName: row.source_name,
     },
   };
+}
+
+/**
+ * Reads the whole CSV using its header row as keys. A real parser is needed
+ * because source names are quoted and may contain commas.
+ */
+export function readTpcaCsv(path: string): TpcaSeedRecord[] {
+  const rows: TpcaCsvRow[] = parse(readFileSync(path, 'utf8'), {
+    columns: true,
+  });
+  return rows.map(mapTpcaRow);
 }
