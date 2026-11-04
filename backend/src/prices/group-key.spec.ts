@@ -33,14 +33,26 @@ describe('groupKey', () => {
     expect(new Set(keys).size).toBe(3);
   });
 
-  it('los códigos internos de cada tienda (prefijos 02 y 20–29) o inválidos no agrupan productos de tiendas distintas', () => {
+  it('los códigos internos (prefijos 02 y 20–29) no agrupan entre cadenas distintas, y los inválidos no agrupan', () => {
     // GS1 reserva esos prefijos para uso interno: cada cadena los asigna a lo suyo
     // (p. ej. frescos vendidos por peso), así que el mismo número no es el mismo producto.
     const tomatePlazaVea = { store: 'plazavea', sourceSku: '111', ean: '2000123000000' };
     const otroWong = { store: 'wong', sourceSku: '222', ean: '2000123000000' };
+    const codigo02Metro = { store: 'metro', sourceSku: '333', ean: '0212345678905' };
+    const codigo02PlazaVea = { store: 'plazavea', sourceSku: '555', ean: '0212345678905' };
 
     expect(groupKey(tomatePlazaVea)).not.toBe(groupKey(otroWong));
-    expect(groupKey({ store: 'metro', sourceSku: '333', ean: '0212345678905' })).toBe('s-metro-333');
+    expect(groupKey(codigo02Metro)).not.toBe(groupKey(codigo02PlazaVea));
     expect(groupKey({ store: 'metro', sourceSku: '444', ean: '123' })).toBe('s-metro-444');
+  });
+
+  it('un código interno sí agrupa dentro de la misma cadena: Wong y Metro (Cencosud) comparten catálogo', () => {
+    // Dato real: "Queso Maduro Gouda Pimienta Gestam x Kg" usa 2566500000004 en Wong y en Metro.
+    const goudaWong = { store: 'wong', sourceSku: '1', ean: '2566500000004' };
+    const goudaMetro = { store: 'metro', sourceSku: '2', ean: '2566500000004' };
+    const mismoCodigoPlazaVea = { store: 'plazavea', sourceSku: '3', ean: '2566500000004' };
+
+    expect(groupKey(goudaWong)).toBe(groupKey(goudaMetro));
+    expect(groupKey(mismoCodigoPlazaVea)).not.toBe(groupKey(goudaWong));
   });
 });
