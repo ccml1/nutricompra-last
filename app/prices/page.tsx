@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { usePlan } from '@/hooks/use-plan'
 import { useStoreProducts } from '@/hooks/use-store-products'
 import { formatCurrency } from '@/lib/format'
+import { pressableClass } from '@/lib/pressable'
 import type { StoreOffer, StoreProductGroup } from '@/types'
 
 /** El backend devuelve como máximo 20 productos por búsqueda. */
@@ -30,10 +31,6 @@ const stores = [
  */
 const storeSearchTerms: Record<string, string> = { 'Atún enlatado': 'Atún' }
 
-/** Respuesta inmediata al tocar (se hunde un poco); sin movimiento si el sistema lo pide. */
-const pressable =
-  'cursor-pointer transition-[transform,box-shadow,background-color] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
-
 const dayFormatter = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' })
 const dayOf = (offer: StoreOffer) => dayFormatter.format(new Date(offer.observedAt))
 const price = (offer: StoreOffer) => formatCurrency(offer.priceCents / 100)
@@ -45,7 +42,7 @@ function ListChip({ label, selected, onSelect }: { label: string; selected: bool
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`min-h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium ${pressable} ${
+      className={`min-h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium ${pressableClass} ${
         selected
           ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
           : 'bg-card text-foreground/80 shadow-sm ring-1 ring-border/70 hover:text-foreground hover:shadow-md'
@@ -77,7 +74,7 @@ function PriceTile({ offer, storeName, tone, showDay }: { offer?: StoreOffer; st
       rel="noopener noreferrer"
       title={`Ver en ${storeName}`}
       aria-label={`${storeName}: ${price(offer)}${label ? `, ${label.toLowerCase()}` : ''}, consultado el ${day}. Abre la ficha en la tienda`}
-      className={`group relative flex min-h-12 flex-col items-center justify-center rounded-xl px-2 py-1.5 ${pressable} ${
+      className={`group relative flex min-h-12 flex-col items-center justify-center rounded-xl px-2 py-1.5 ${pressableClass} ${
         tone === 'best'
           ? 'bg-primary/10 text-primary ring-1 ring-primary/25 hover:shadow-md hover:shadow-primary/15'
           : 'bg-muted/50 text-foreground hover:bg-card hover:shadow-md hover:ring-1 hover:ring-border/70'
@@ -204,7 +201,7 @@ export default function PricesPage() {
                         type="button"
                         onClick={() => setShowAllChips((value) => !value)}
                         aria-expanded={showAllChips}
-                        className={`min-h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium text-primary ring-1 ring-primary/30 hover:bg-primary/5 ${pressable}`}
+                        className={`min-h-9 whitespace-nowrap rounded-full px-4 text-sm font-medium text-primary ring-1 ring-primary/30 hover:bg-primary/5 ${pressableClass}`}
                       >
                         {showAllChips ? 'Ver menos' : `+${hiddenCount} más`}
                       </button>
