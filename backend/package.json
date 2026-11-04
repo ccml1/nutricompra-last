@@ -16,6 +16,7 @@
     "prisma:validate": "prisma validate",
     "prisma:format": "prisma format",
     "db:seed": "ts-node prisma/seed.ts",
+    "prices:load": "ts-node prisma/load-prices.ts",
     "test": "jest"
   },
   "jest": {

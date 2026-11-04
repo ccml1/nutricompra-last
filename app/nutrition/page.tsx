@@ -10,6 +10,7 @@ import { useCatalogFoods } from '@/hooks/use-catalog-foods'
 import { usePlan } from '@/hooks/use-plan'
 import { filterFoods, foodCategories, searchByName } from '@/lib/catalog-search'
 import { dayNutrition } from '@/lib/nutrition'
+import { pressableClass } from '@/lib/pressable'
 import type { CatalogFood } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,9 +42,6 @@ const categoryIcons = new Map<string, LucideIcon>([
   ['Huevos', Egg],
 ])
 
-/** Respuesta inmediata al presionar, sin animación si el sistema pide reducir movimiento. */
-const pressableClass =
-  'transition-[transform,background-color,border-color] duration-100 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
 
 function catalogNutritionValues(food: CatalogFood): NutritionValues {
   return {
