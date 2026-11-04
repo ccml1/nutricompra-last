@@ -1,0 +1,61 @@
+# Actualización diaria de precios (SP-24): lee los precios de alimentos de
+# Plaza Vea, Wong y Metro y los guarda en Neon, con una corrida registrada por
+# tienda (scrape_runs). Corre todos los días a eso de las 06:07 de Lima, después
+# de que las tiendas actualizan sus precios y antes de que abran a las 07:00.
+# También se puede correr a mano desde la pestaña Actions, para todas las
+# tiendas o solo algunas.
+#
+# Si una tienda falla, sus precios anteriores se quedan y el job termina en
+# rojo (GitHub avisa por correo). GitHub pausa los jobs programados de un repo
+# público tras 60 días sin actividad; se reactiva con un clic en Actions.
+name: Precios diarios
+
+on:
+  schedule:
+    # 11:07 UTC = 06:07 en Lima (UTC-5, sin horario de verano). No en punto,
+    # porque GitHub demora o salta las corridas programadas en horas de carga.
+    - cron: '7 11 * * *'
+  workflow_dispatch:
+    inputs:
+      tiendas:
+        description: 'Tiendas a cargar, separadas por espacios (plazavea wong metro). Vacío = todas.'
+        required: false
+        default: ''
+
+# Dos cargas nunca corren a la vez (por ejemplo, una a mano durante la diaria).
+concurrency:
+  group: prices-load
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    # Una carga normal toma unos 8 minutos.
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # También genera el cliente de Prisma (postinstall).
+      - run: npm ci
+
+      - name: Cargar precios
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Llega como variable de entorno, nunca pegado dentro del script.
+          TIENDAS: ${{ inputs.tiendas }}
+        # `read -ra` separa las tiendas por espacios sin expandir comodines (un "*" llega tal cual).
+        run: |
+          read -ra stores <<< "$TIENDAS"
+          npm run prices:load -- "${stores[@]}"

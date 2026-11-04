@@ -4,6 +4,7 @@
 //   - Nutrition domain (Etapa 2.1-B): Food, NutritionalProfile, DataSource
 //   - Store prices (SP-23): Store, StoreProduct — one current price per
 //     product and store; no price history.
+//   - Price loads (SP-24): ScrapeRun — one row per store and update.
 //
 // Out of scope (do NOT add tables for these yet):
 //   Price history, Offer, Meal, Recipe, Recommendation, User.
@@ -178,8 +179,10 @@ model StoreProduct {
   /// Barcode as the store publishes it; NULL when the store omits it.
   ean String?
 
-  /// Groups the same product across stores: "g-" + GTIN-14, or a key
-  /// unique to this store and SKU when there is no barcode.
+  /// Groups the same product: "g-" + GTIN-14 across all stores; "i-<chain>-"
+  /// + GTIN-14 for an in-store code (GS1 02 and 20–29), only within the same
+  /// chain (Wong and Metro); or a key unique to this store and SKU when there
+  /// is no usable barcode.
   groupKey String
 
   name  String
@@ -207,4 +210,28 @@ model StoreProduct {
   @@unique([storeId, sourceSku])
   @@index([groupKey])
   @@map("store_products")
+}
+
+/// One store's price load in one update (the daily job or a run by hand):
+/// when it started and ended, how it went, and the error if it failed.
+model ScrapeRun {
+  id String @id @default(uuid())
+
+  /// Store code as the loader uses it (e.g. "wong"). Plain text instead of a
+  /// relation, so the failed first load of a new store can still be recorded.
+  storeCode String
+
+  startedAt  DateTime
+  finishedAt DateTime
+
+  /// "ok" or "error".
+  status String
+
+  /// Products saved; NULL when the load failed.
+  products Int?
+
+  /// What went wrong; NULL when the load went well.
+  error String?
+
+  @@map("scrape_runs")
 }

@@ -27,6 +27,9 @@ const MAX_RESULTS = 20;
 /** Filas que se leen como máximo por búsqueda, antes de agrupar y ordenar. */
 const MAX_ROWS = 1000;
 
+/** Un precio de más de 4 días ya no se muestra: esa tienda no se pudo leer en ese tiempo. */
+const MAX_PRICE_AGE_MS = 96 * 60 * 60 * 1000;
+
 /** Orden alfabético en español ("Ñ" después de "N", tildes en su lugar). */
 const spanish = new Intl.Collator('es');
 
@@ -44,7 +47,11 @@ export class ProductsService {
     if (words.length === 0) return [];
 
     const rows = await this.prisma.storeProduct.findMany({
-      where: { inStock: true, AND: words.map((word) => ({ searchName: { contains: word } })) },
+      where: {
+        inStock: true,
+        observedAt: { gte: new Date(Date.now() - MAX_PRICE_AGE_MS) },
+        AND: words.map((word) => ({ searchName: { contains: word } })),
+      },
       include: { store: true },
       // Tope para palabras comunes ("de"): de sobra para elegir los 20 que se muestran.
       take: MAX_ROWS,

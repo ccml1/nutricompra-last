@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
+import { setClock } from '../../test/clock';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { PricesModule } from './prices.module';
@@ -62,6 +63,7 @@ describe('GET /products', () => {
   });
 
   afterEach(async () => {
+    jest.useRealTimers();
     await app.close();
   });
 
@@ -109,10 +111,25 @@ describe('GET /products', () => {
     // así que cada palabra buscada llega igual de normalizada.
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        // El filtro completo: con stock, consultado en las últimas 96 h y con todas las palabras.
         where: {
           inStock: true,
+          observedAt: { gte: expect.any(Date) },
           AND: [{ searchName: { contains: 'atun' } }, { searchName: { contains: 'enlatado' } }],
         },
+      }),
+    );
+  });
+
+  it('solo muestra precios consultados en las últimas 96 h: el 8 nov. a las 11:00 UTC pide desde el 4 nov. a las 11:00 UTC', async () => {
+    setClock('2026-11-08T11:00:00Z');
+
+    await request(app.getHttpServer()).get('/products').query({ q: 'crema' }).expect(200);
+
+    // El precio de una tienda que no se pudo leer en más de 4 días ya no aparece.
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ observedAt: { gte: new Date('2026-11-04T11:00:00Z') } }),
       }),
     );
   });
@@ -253,8 +270,10 @@ describe('GET /products', () => {
 
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        // El filtro completo: con stock, consultado en las últimas 96 h y con todas las palabras.
         where: {
           inStock: true,
+          observedAt: { gte: expect.any(Date) },
           AND: [{ searchName: { contains: 'arroz' } }, { searchName: { contains: 'costeno' } }],
         },
       }),
