@@ -1,13 +1,12 @@
 // NutriCompra — Backend data layer
-// Prisma schema for the nutrition domain (Etapa 2.1-B).
 //
 // Scope of this schema (intentionally limited):
-//   - Food
-//   - NutritionalProfile
-//   - DataSource
+//   - Nutrition domain (Etapa 2.1-B): Food, NutritionalProfile, DataSource
+//   - Store prices (SP-23): Store, StoreProduct — one current price per
+//     product and store; no price history.
 //
-// Out of scope for this stage (do NOT add tables for these yet):
-//   Product, Store, Price, Offer, Meal, Recipe, Recommendation, User.
+// Out of scope (do NOT add tables for these yet):
+//   Price history, Offer, Meal, Recipe, Recommendation, User.
 //
 // See backend/docs/ARCHITECTURE.md for the full rationale.
 
@@ -144,4 +143,68 @@ model DataSource {
 
   @@index([name, version, sourceCode])
   @@map("data_sources")
+}
+
+/// An online store whose public catalog NutriCompra reads
+/// (Plaza Vea, Wong, Metro).
+model Store {
+  id String @id @default(uuid())
+
+  /// Short code used in the app and the loader (e.g. "wong").
+  code String @unique
+
+  /// Display name (e.g. "Wong").
+  name String
+
+  /// Domain of the store's website (e.g. "www.wong.pe").
+  host String
+
+  products StoreProduct[]
+
+  @@map("stores")
+}
+
+/// A product as one store sells it, with its CURRENT price only
+/// (each load overwrites it; there is no price history).
+model StoreProduct {
+  id String @id @default(uuid())
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id])
+
+  /// The store's own SKU id for this product.
+  sourceSku String
+
+  /// Barcode as the store publishes it; NULL when the store omits it.
+  ean String?
+
+  /// Groups the same product across stores: "g-" + GTIN-14, or a key
+  /// unique to this store and SKU when there is no barcode.
+  groupKey String
+
+  name  String
+  brand String?
+
+  /// The name without accents, in lowercase and with single spaces
+  /// ("crema de leche gloria 946ml"), so the search can ignore accents.
+  searchName String
+
+  /// Link to the product page on the store's website.
+  url String
+
+  /// Prices in integer cents of PEN (S/ 28.80 → 2880).
+  priceCents     Int
+  listPriceCents Int
+
+  inStock Boolean
+
+  /// When the price was read from the store.
+  observedAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, sourceSku])
+  @@index([groupKey])
+  @@map("store_products")
 }
