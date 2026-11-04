@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { searchWords } from './search-text';
+import { normalizeSearchText, searchWords } from './search-text';
 
 /** El precio de un producto en una tienda, con la fecha de consulta y su ficha. */
 export interface Offer {
@@ -66,9 +66,18 @@ export class ProductsService {
       for (const offer of offers) offer.isBest = offer.priceCents === lowest;
     }
 
-    // Primero los que se pueden comparar en más tiendas; a igual número, por nombre.
+    // Primero lo que es el alimento buscado (el nombre empieza con el texto: "Manzana
+    // Royal Gala" antes que "Agua sabor a manzana"); luego los que se pueden comparar
+    // en más tiendas; a igual número, por nombre.
+    const text = normalizeSearchText(query);
+    const startsWithText = (group: ProductGroup) => normalizeSearchText(group.name).startsWith(text);
     return [...groups.values()]
-      .sort((a, b) => b.offers.length - a.offers.length || spanish.compare(a.name, b.name))
+      .sort(
+        (a, b) =>
+          Number(startsWithText(b)) - Number(startsWithText(a)) ||
+          b.offers.length - a.offers.length ||
+          spanish.compare(a.name, b.name),
+      )
       .slice(0, MAX_RESULTS);
   }
 }

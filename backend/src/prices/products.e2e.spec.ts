@@ -191,6 +191,27 @@ describe('GET /products', () => {
     );
   });
 
+  it('pone primero los productos cuyo nombre empieza con lo buscado, aunque estén en menos tiendas', async () => {
+    // "Manzana" traía primero el agua con gas sabor manzana (3 tiendas) antes que la fruta.
+    const agua = { groupKey: 'g-agua', name: 'Agua con Gas CIELO Sabor a Manzana Botella 600ml' };
+    findMany.mockResolvedValue([
+      storeProductRow(plazaVea, 250, agua),
+      storeProductRow(wong, 260, agua),
+      storeProductRow(metro, 260, agua),
+      storeProductRow(wong, 899, { groupKey: 's-wong-manzana', name: 'Manzana Royal Gala x kg' }),
+    ]);
+
+    const response = await request(app.getHttpServer())
+      .get('/products')
+      .query({ q: 'Manzana' })
+      .expect(200);
+
+    expect(response.body.map((product: { name: string }) => product.name)).toEqual([
+      'Manzana Royal Gala x kg',
+      'Agua con Gas CIELO Sabor a Manzana Botella 600ml',
+    ]);
+  });
+
   it('sin coincidencias devuelve una lista vacía', async () => {
     findMany.mockResolvedValue([]);
 
