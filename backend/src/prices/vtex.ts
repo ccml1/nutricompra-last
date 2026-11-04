@@ -60,7 +60,7 @@ export interface ReaderDeps {
   fetch: (
     url: string,
     init: { headers: Record<string, string> },
-  ) => Promise<{ json(): Promise<unknown> }>;
+  ) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
   sleep: (ms: number) => Promise<void>;
 }
 
@@ -90,8 +90,17 @@ export async function readCategory(
     url.searchParams.set('_to', String(from + PAGE_SIZE - 1));
 
     const response = await deps.fetch(url.toString(), { headers: { 'User-Agent': USER_AGENT } });
-    const page = (await response.json()) as VtexProduct[];
-    products.push(...toStoreProducts(store.code, page));
+    // Ante un error (bloqueo, caída, límite) nos detenemos en esta tienda, sin insistir.
+    if (!response.ok) {
+      throw new Error(`${store.code}: la tienda respondió ${response.status} en ${url}`);
+    }
+    const page = await response.json();
+    if (!Array.isArray(page)) {
+      throw new Error(
+        `${store.code}: la respuesta no es una lista de productos (${response.status}) en ${url}`,
+      );
+    }
+    products.push(...toStoreProducts(store.code, page as VtexProduct[]));
     if (page.length < PAGE_SIZE) return products;
   }
 }

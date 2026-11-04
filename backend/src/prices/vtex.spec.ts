@@ -126,6 +126,32 @@ describe('readCategory', () => {
     ]);
   });
 
+  it('si la tienda responde con error o con algo que no es una lista, se detiene con un mensaje claro (tienda, URL y estado HTTP)', async () => {
+    const [cremaDeLeche] = fixture('wong-crema-de-leche');
+    const sleep = jest.fn(async () => {});
+    // Primera página bien; la segunda, un error temporal de la tienda.
+    const conError = {
+      sleep,
+      fetch: jest.fn(async (url: string) =>
+        url.includes('_from=0')
+          ? { ok: true, status: 206, json: async () => copiesOf(cremaDeLeche, 50, 1) }
+          : { ok: false, status: 503, json: async () => ({ error: 'Service Unavailable' }) },
+      ),
+    };
+    // Responde "bien" (200) pero con un objeto en vez de una lista de productos.
+    const noEsLista = {
+      sleep,
+      fetch: jest.fn(async () => ({ ok: true, status: 200, json: async () => ({ error: 'x' }) })),
+    };
+
+    await expect(readCategory(wong, '/1700/', conError)).rejects.toThrow(
+      /wong.*503.*https:\/\/www\.wong\.pe\/api\/catalog_system\/pub\/products\/search/,
+    );
+    await expect(readCategory(wong, '/1700/', noEsLista)).rejects.toThrow(
+      /wong.*no es una lista.*200/,
+    );
+  });
+
   it('envía un User-Agent identificable de NutriCompra, con enlace al repositorio', async () => {
     const [cremaDeLeche] = fixture('wong-crema-de-leche');
     const vtex = fakeVtex([copiesOf(cremaDeLeche, 50, 1), copiesOf(cremaDeLeche, 1, 51)]);

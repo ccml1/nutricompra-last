@@ -12,7 +12,8 @@
  * that fails (blocked, down, unexpected answer) is reported and skipped; its
  * previous prices stay as they were.
  *
- * Usage: npm run prices:load
+ * Usage: npm run prices:load            (all stores)
+ *        npm run prices:load -- metro   (only the given store codes)
  */
 import { PrismaClient } from '@prisma/client';
 import { categoryPaths, type VtexCategory } from '../src/prices/categories';
@@ -31,8 +32,12 @@ const deps: ReaderDeps = {
 
 async function loadStore(prisma: PrismaClient, store: PriceStore) {
   const treeUrl = `https://${store.host}/api/catalog_system/pub/category/tree/1`;
-  const tree = (await (await fetch(treeUrl, { headers: { 'User-Agent': USER_AGENT } })).json()) as VtexCategory[];
-  const paths = categoryPaths(tree, store.foodDepartmentIds);
+  const response = await fetch(treeUrl, { headers: { 'User-Agent': USER_AGENT } });
+  const tree: unknown = response.ok ? await response.json() : null;
+  if (!Array.isArray(tree)) {
+    throw new Error(`${store.code}: no se pudo leer el árbol de categorías (${response.status}) en ${treeUrl}`);
+  }
+  const paths = categoryPaths(tree as VtexCategory[], store.foodDepartmentIds);
 
   // The same SKU can appear in two categories: keep one per SKU.
   const products = new Map<string, StoreProduct>();
@@ -47,16 +52,26 @@ async function loadStore(prisma: PrismaClient, store: PriceStore) {
   return { categories: paths.length, products: products.size };
 }
 
+/** The stores named on the command line (e.g. `metro`), or all of them. */
+function storesToLoad(codes: string[]): PriceStore[] {
+  if (codes.length === 0) return PRICE_STORES;
+  const unknown = codes.filter((code) => !PRICE_STORES.some((store) => store.code === code));
+  if (unknown.length > 0) {
+    const valid = PRICE_STORES.map((store) => store.code).join(', ');
+    throw new Error(`Tienda desconocida: ${unknown.join(', ')}. Usa: ${valid}`);
+  }
+  return PRICE_STORES.filter((store) => codes.includes(store.code));
+}
+
 async function main() {
+  const stores = storesToLoad(process.argv.slice(2));
   const prisma = new PrismaClient();
   try {
-    const results = await Promise.allSettled(
-      PRICE_STORES.map((store) => loadStore(prisma, store)),
-    );
+    const results = await Promise.allSettled(stores.map((store) => loadStore(prisma, store)));
 
     let failed = false;
     results.forEach((result, i) => {
-      const { name } = PRICE_STORES[i];
+      const { name } = stores[i];
       if (result.status === 'fulfilled') {
         const { categories, products } = result.value;
         console.log(`${name}: ${products} productos de ${categories} subcategorías`);
