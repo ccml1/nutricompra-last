@@ -53,22 +53,40 @@ export async function getShoppingList(): Promise<ShoppingList> {
   return clone(buildShoppingList(mockWeekPlan))
 }
 
+/** 15 s cubre el primer arranque del backend y de Neon; si se pasa, la pantalla muestra el error. */
+const API_TIMEOUT_MS = 15_000
+
+/**
+ * GET al backend NestJS. Corta a los 15 s o cuando `signal` se cancela, sin
+ * `AbortSignal.any`, que no existe en navegadores algo antiguos (iOS 16).
+ */
+async function getFromApi<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  if (!apiUrl) {
+    throw new Error('Falta NEXT_PUBLIC_API_URL: defínela en .env.local (ver .env.example)')
+  }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+  const cancel = () => controller.abort()
+  signal?.addEventListener('abort', cancel, { once: true })
+  try {
+    const response = await fetch(`${apiUrl}${path}`, { signal: controller.signal })
+    if (!response.ok) {
+      throw new Error(`GET ${path.split('?')[0]} respondió ${response.status}`)
+    }
+    return await response.json()
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', cancel)
+  }
+}
+
 /**
  * Catálogo de alimentos TPCA con su información nutricional, servido por el
  * backend NestJS. Es la primera función que ya no usa datos de prueba.
  */
 export async function getCatalogFoods(): Promise<CatalogFood[]> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL
-  if (!apiUrl) {
-    throw new Error('Falta NEXT_PUBLIC_API_URL: defínela en .env.local (ver .env.example)')
-  }
-  // 15 s cubre el primer arranque del backend y de Neon; si se pasa,
-  // la pantalla muestra el error en lugar de quedarse cargando.
-  const response = await fetch(`${apiUrl}/foods`, { signal: AbortSignal.timeout(15_000) })
-  if (!response.ok) {
-    throw new Error(`GET /foods respondió ${response.status}`)
-  }
-  return response.json()
+  return getFromApi('/foods')
 }
 
 /**
@@ -80,16 +98,5 @@ export async function searchStoreProducts(
   query: string,
   signal?: AbortSignal,
 ): Promise<StoreProductGroup[]> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL
-  if (!apiUrl) {
-    throw new Error('Falta NEXT_PUBLIC_API_URL: defínela en .env.local (ver .env.example)')
-  }
-  const timeout = AbortSignal.timeout(15_000)
-  const response = await fetch(`${apiUrl}/products?q=${encodeURIComponent(query)}`, {
-    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-  })
-  if (!response.ok) {
-    throw new Error(`GET /products respondió ${response.status}`)
-  }
-  return response.json()
+  return getFromApi(`/products?q=${encodeURIComponent(query)}`, signal)
 }

@@ -24,6 +24,9 @@ export interface ProductGroup {
 /** Pocos resultados para no obligar a hacer mucho scroll en el celular. */
 const MAX_RESULTS = 20;
 
+/** Filas que se leen como máximo por búsqueda, antes de agrupar y ordenar. */
+const MAX_ROWS = 1000;
+
 /** Orden alfabético en español ("Ñ" después de "N", tildes en su lugar). */
 const spanish = new Intl.Collator('es');
 
@@ -36,9 +39,15 @@ export class ProductsService {
    * mayúsculas), juntando en uno los que comparten clave de grupo.
    */
   async search(query: string): Promise<ProductGroup[]> {
+    const words = searchWords(query);
+    // Sin palabras no hay nada que buscar: no se lee la tabla entera.
+    if (words.length === 0) return [];
+
     const rows = await this.prisma.storeProduct.findMany({
-      where: { AND: searchWords(query).map((word) => ({ searchName: { contains: word } })) },
+      where: { inStock: true, AND: words.map((word) => ({ searchName: { contains: word } })) },
       include: { store: true },
+      // Tope para palabras comunes ("de"): de sobra para elegir los 20 que se muestran.
+      take: MAX_ROWS,
     });
 
     const groups = new Map<string, ProductGroup>();
@@ -49,14 +58,18 @@ export class ProductsService {
         brand: row.brand,
         offers: [],
       };
-      group.offers.push({
+      const offer: Offer = {
         store: row.store.code,
         storeName: row.store.name,
         priceCents: row.priceCents,
         observedAt: row.observedAt,
         url: row.url,
         isBest: false,
-      });
+      };
+      // Una tienda con dos SKUs del mismo producto: queda su precio más bajo.
+      const sameStore = group.offers.findIndex((existing) => existing.store === offer.store);
+      if (sameStore === -1) group.offers.push(offer);
+      else if (offer.priceCents < group.offers[sameStore].priceCents) group.offers[sameStore] = offer;
       groups.set(row.groupKey, group);
     }
 

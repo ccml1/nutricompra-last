@@ -5,9 +5,9 @@ import { ProductsService } from './products.service';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  /** GET /products?q=leche gloria */
+  /** GET /products?q=leche gloria (si `q` se repite, se buscan todas sus palabras). */
   @Get()
-  search(@Query('q') query = '') {
-    return this.productsService.search(query);
+  search(@Query('q') query: string | string[] = '') {
+    return this.productsService.search(Array.isArray(query) ? query.join(' ') : query);
   }
 }

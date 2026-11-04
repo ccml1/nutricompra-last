@@ -110,6 +110,7 @@ describe('GET /products', () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
+          inStock: true,
           AND: [{ searchName: { contains: 'atun' } }, { searchName: { contains: 'enlatado' } }],
         },
       }),
@@ -210,6 +211,54 @@ describe('GET /products', () => {
       'Manzana Royal Gala x kg',
       'Agua con Gas CIELO Sabor a Manzana Botella 600ml',
     ]);
+  });
+
+  it('una búsqueda vacía devuelve una lista vacía sin leer la base', async () => {
+    const response = await request(app.getHttpServer()).get('/products').query({ q: '   ' }).expect(200);
+
+    expect(response.body).toEqual([]);
+    expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it('lee como máximo 1.000 filas por búsqueda, para que una palabra común no traiga toda la tabla', async () => {
+    await request(app.getHttpServer()).get('/products').query({ q: 'de' }).expect(200);
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 1000 }));
+  });
+
+  it('si una tienda tiene dos SKUs del mismo producto, queda solo su precio más bajo', async () => {
+    findMany.mockResolvedValue([
+      storeProductRow(wong, 520),
+      storeProductRow(wong, 490),
+      storeProductRow(metro, 500),
+    ]);
+
+    const response = await request(app.getHttpServer())
+      .get('/products')
+      .query({ q: 'crema de leche gloria' })
+      .expect(200);
+
+    const [product] = response.body;
+    expect(product.offers).toHaveLength(2);
+    expect(product.offers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ store: 'wong', priceCents: 490, isBest: true }),
+        expect.objectContaining({ store: 'metro', priceCents: 500, isBest: false }),
+      ]),
+    );
+  });
+
+  it('acepta ?q= repetido y busca todas las palabras, sin responder error', async () => {
+    await request(app.getHttpServer()).get('/products?q=arroz&q=costeno').expect(200);
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          inStock: true,
+          AND: [{ searchName: { contains: 'arroz' } }, { searchName: { contains: 'costeno' } }],
+        },
+      }),
+    );
   });
 
   it('sin coincidencias devuelve una lista vacía', async () => {

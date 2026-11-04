@@ -10,6 +10,8 @@ export interface VtexProduct {
     itemId: string;
     ean: string;
     sellers: {
+      /** El vendedor principal de la tienda; los demás son del marketplace. */
+      sellerDefault?: boolean;
       commertialOffer: { Price: number; ListPrice: number; AvailableQuantity: number };
     }[];
   }[];
@@ -32,9 +34,14 @@ export interface StoreProduct {
 
 const toCents = (soles: number) => Math.round(soles * 100);
 
+/** El precio que cobra la tienda misma: su vendedor principal, o el primero si no marca ninguno. */
+const storeSeller = (item: VtexProduct['items'][number]) =>
+  item.sellers.find((seller) => seller.sellerDefault) ?? item.sellers[0];
+
+/** Convierte un producto VTEX que tiene SKU y vendedor (ver `toStoreProducts`). */
 export function toStoreProduct(store: string, product: VtexProduct): StoreProduct {
   const [item] = product.items;
-  const offer = item.sellers[0].commertialOffer;
+  const offer = storeSeller(item).commertialOffer;
 
   return {
     store,
@@ -108,6 +115,8 @@ export async function readCategory(
 /** Convierte una página de la API y deja solo lo que se puede comprar: con stock y precio. */
 export function toStoreProducts(store: string, products: VtexProduct[]): StoreProduct[] {
   return products
+    // Un producto mal publicado (sin SKU o sin vendedor) se omite: no debe detener la carga.
+    .filter((product) => product.items?.[0]?.sellers?.length > 0)
     .map((product) => toStoreProduct(store, product))
     .filter((product) => product.inStock && product.priceCents > 0);
 }

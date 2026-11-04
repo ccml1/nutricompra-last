@@ -11,7 +11,10 @@ const wong = { code: 'wong', name: 'Wong', host: 'www.wong.pe' };
 function fakeDb() {
   const db = {
     store: { upsert: jest.fn().mockResolvedValue({ id: 'store-wong' }) },
-    storeProduct: { upsert: jest.fn().mockResolvedValue({}) },
+    storeProduct: {
+      upsert: jest.fn().mockResolvedValue({}),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
   };
   return { db, client: db as unknown as Pick<PrismaClient, 'store' | 'storeProduct'> };
 }
@@ -48,6 +51,18 @@ describe('saveStoreProducts', () => {
       where: { storeId_sourceSku: { storeId: 'store-wong', sourceSku: '8839' } },
       create: { storeId: 'store-wong', sourceSku: '8839', ...current },
       update: current,
+    });
+  });
+
+  it('marca sin stock los productos de la tienda que no aparecieron en esta lectura', async () => {
+    // Si la tienda dejó de listarlo (agotado o retirado), su precio viejo no debe seguir vigente.
+    const { db, client } = fakeDb();
+
+    await saveStoreProducts(client, wong, [], observedAt);
+
+    expect(db.storeProduct.updateMany).toHaveBeenCalledWith({
+      where: { storeId: 'store-wong', observedAt: { lt: observedAt } },
+      data: { inStock: false },
     });
   });
 });

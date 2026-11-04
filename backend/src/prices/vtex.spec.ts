@@ -54,6 +54,33 @@ describe('toStoreProducts', () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ sourceSku: '8839', priceCents: 2880, inStock: true });
   });
+
+  it('omite los productos sin SKU o sin vendedor, en vez de detener la carga de la tienda', () => {
+    const [cremaDeLeche] = fixture('wong-crema-de-leche');
+    const sinSku = { ...structuredClone(cremaDeLeche), items: [] };
+    const sinVendedor = structuredClone(cremaDeLeche);
+    sinVendedor.items[0].sellers = [];
+
+    const result = toStoreProducts('wong', [sinSku, cremaDeLeche, sinVendedor]);
+
+    expect(result.map((product) => product.sourceSku)).toEqual(['8839']);
+  });
+
+  it('usa el precio del vendedor principal de la tienda, no el del primer vendedor de la lista', () => {
+    const [cremaDeLeche] = fixture('wong-crema-de-leche');
+    const conMarketplace = structuredClone(cremaDeLeche);
+    const tienda = conMarketplace.items[0].sellers[0];
+    const otroVendedor = {
+      ...structuredClone(tienda),
+      sellerId: 'marketplace-1',
+      sellerName: 'Otro vendedor',
+      sellerDefault: false,
+      commertialOffer: { ...tienda.commertialOffer, Price: 35 },
+    };
+    conMarketplace.items[0].sellers = [otroVendedor, tienda];
+
+    expect(toStoreProducts('wong', [conMarketplace])[0].priceCents).toBe(2880);
+  });
 });
 
 /** `count` copias del producto con SKUs distintos, para armar páginas de la API. */

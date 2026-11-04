@@ -32,4 +32,15 @@ describe('groupKey', () => {
 
     expect(new Set(keys).size).toBe(3);
   });
+
+  it('los códigos internos de cada tienda (prefijos 02 y 20–29) o inválidos no agrupan productos de tiendas distintas', () => {
+    // GS1 reserva esos prefijos para uso interno: cada cadena los asigna a lo suyo
+    // (p. ej. frescos vendidos por peso), así que el mismo número no es el mismo producto.
+    const tomatePlazaVea = { store: 'plazavea', sourceSku: '111', ean: '2000123000000' };
+    const otroWong = { store: 'wong', sourceSku: '222', ean: '2000123000000' };
+
+    expect(groupKey(tomatePlazaVea)).not.toBe(groupKey(otroWong));
+    expect(groupKey({ store: 'metro', sourceSku: '333', ean: '0212345678905' })).toBe('s-metro-333');
+    expect(groupKey({ store: 'metro', sourceSku: '444', ean: '123' })).toBe('s-metro-444');
+  });
 });
