@@ -55,4 +55,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # Llega como variable de entorno, nunca pegado dentro del script.
           TIENDAS: ${{ inputs.tiendas }}
-        run: npm run prices:load -- $TIENDAS
+        # `read -ra` separa las tiendas por espacios sin expandir comodines (un "*" llega tal cual).
+        run: |
+          read -ra stores <<< "$TIENDAS"
+          npm run prices:load -- "${stores[@]}"

@@ -58,9 +58,10 @@ export async function saveStoreProducts(
     await Promise.all(products.slice(start, start + SAVE_BATCH).map(save));
   }
 
-  // Todo lo de esta lectura lleva `observedAt`; lo anterior que no se volvió a ver ya no se vende.
+  // Lo que la tienda ya no lista no se vende. Se compara por SKU y no por hora, para que
+  // dos cargas de la misma tienda a la vez (una local y la diaria) no se pisen.
   await db.storeProduct.updateMany({
-    where: { storeId, observedAt: { lt: observedAt } },
+    where: { storeId, sourceSku: { notIn: products.map((product) => product.sourceSku) } },
     data: { inStock: false },
   });
 }

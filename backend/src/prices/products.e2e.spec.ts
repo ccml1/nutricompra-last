@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
+import { setClock } from '../../test/clock';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { PricesModule } from './prices.module';
@@ -36,25 +37,6 @@ function storeProductRow(
     store: { id: `store-${store.code}`, ...store },
     ...product,
   };
-}
-
-/** Fija solo la fecha y hora actuales; los timers siguen siendo reales porque Nest y supertest los usan. */
-function setClock(iso: string) {
-  jest.useFakeTimers({
-    now: new Date(iso),
-    doNotFake: [
-      'hrtime',
-      'nextTick',
-      'performance',
-      'queueMicrotask',
-      'setImmediate',
-      'clearImmediate',
-      'setInterval',
-      'clearInterval',
-      'setTimeout',
-      'clearTimeout',
-    ],
-  });
 }
 
 const plazaVea = { code: 'plazavea', name: 'Plaza Vea', host: 'www.plazavea.com.pe' };
@@ -129,10 +111,12 @@ describe('GET /products', () => {
     // así que cada palabra buscada llega igual de normalizada.
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
+        // El filtro completo: con stock, consultado en las últimas 96 h y con todas las palabras.
+        where: {
           inStock: true,
+          observedAt: { gte: expect.any(Date) },
           AND: [{ searchName: { contains: 'atun' } }, { searchName: { contains: 'enlatado' } }],
-        }),
+        },
       }),
     );
   });
@@ -286,10 +270,12 @@ describe('GET /products', () => {
 
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
+        // El filtro completo: con stock, consultado en las últimas 96 h y con todas las palabras.
+        where: {
           inStock: true,
+          observedAt: { gte: expect.any(Date) },
           AND: [{ searchName: { contains: 'arroz' } }, { searchName: { contains: 'costeno' } }],
-        }),
+        },
       }),
     );
   });

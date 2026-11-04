@@ -54,14 +54,19 @@ describe('saveStoreProducts', () => {
     });
   });
 
-  it('marca sin stock los productos de la tienda que no aparecieron en esta lectura', async () => {
+  it('marca sin stock los productos de la tienda cuyo SKU no apareció en esta lectura', async () => {
     // Si la tienda dejó de listarlo (agotado o retirado), su precio viejo no debe seguir vigente.
+    // Se decide por SKU y no por hora, para que dos cargas de la misma tienda a la vez
+    // no dejen sin stock lo que la otra acaba de guardar.
+    const [raw] = JSON.parse(
+      readFileSync(join(__dirname, 'fixtures', 'wong-crema-de-leche.json'), 'utf8'),
+    );
     const { db, client } = fakeDb();
 
-    await saveStoreProducts(client, wong, [], observedAt);
+    await saveStoreProducts(client, wong, [toStoreProduct('wong', raw)], observedAt);
 
     expect(db.storeProduct.updateMany).toHaveBeenCalledWith({
-      where: { storeId: 'store-wong', observedAt: { lt: observedAt } },
+      where: { storeId: 'store-wong', sourceSku: { notIn: ['8839'] } },
       data: { inStock: false },
     });
   });
