@@ -10,6 +10,7 @@ import type {
   Household,
   ProductPrice,
   ShoppingList,
+  StoreProductGroup,
   User,
   WeekPlan,
 } from '@/types'
@@ -66,6 +67,29 @@ export async function getCatalogFoods(): Promise<CatalogFood[]> {
   const response = await fetch(`${apiUrl}/foods`, { signal: AbortSignal.timeout(15_000) })
   if (!response.ok) {
     throw new Error(`GET /foods respondió ${response.status}`)
+  }
+  return response.json()
+}
+
+/**
+ * Productos de Plaza Vea, Wong y Metro cuyo nombre contiene todas las
+ * palabras buscadas, con su precio en cada tienda (máximo 20). `signal`
+ * permite cancelar una búsqueda que ya no sirve porque se siguió escribiendo.
+ */
+export async function searchStoreProducts(
+  query: string,
+  signal?: AbortSignal,
+): Promise<StoreProductGroup[]> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  if (!apiUrl) {
+    throw new Error('Falta NEXT_PUBLIC_API_URL: defínela en .env.local (ver .env.example)')
+  }
+  const timeout = AbortSignal.timeout(15_000)
+  const response = await fetch(`${apiUrl}/products?q=${encodeURIComponent(query)}`, {
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+  })
+  if (!response.ok) {
+    throw new Error(`GET /products respondió ${response.status}`)
   }
   return response.json()
 }
