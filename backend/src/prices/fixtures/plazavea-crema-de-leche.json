@@ -1,0 +1,35 @@
+[
+  {
+    "productId": "3429",
+    "productName": "Crema de leche GLORIA Repostería Bolsa 946ml",
+    "brand": "GLORIA",
+    "link": "https://www.plazavea.com.pe/crema-de-leche-gloria-reposteria-bolsa-946ml-971923/p",
+    "categories": [
+      "/Lácteos y Huevos/Leche/Crema de Leche/",
+      "/Lácteos y Huevos/Leche/",
+      "/Lácteos y Huevos/"
+    ],
+    "items": [
+      {
+        "itemId": "3800",
+        "name": "Crema de leche GLORIA Repostería Bolsa 946ml",
+        "ean": "",
+        "measurementUnit": "un",
+        "unitMultiplier": 1.0,
+        "sellers": [
+          {
+            "sellerId": "1",
+            "sellerName": "Plaza Vea",
+            "sellerDefault": true,
+            "commertialOffer": {
+              "Price": 25.9,
+              "ListPrice": 25.9,
+              "AvailableQuantity": 19,
+              "IsAvailable": true
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

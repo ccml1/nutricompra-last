@@ -1,0 +1,35 @@
+[
+  {
+    "productId": "8829",
+    "productName": "Crema de Leche Gloria 946ml",
+    "brand": "Gloria",
+    "link": "https://www.metro.pe/crema-de-leche-gloria-946ml-crema-de-leche-gloria-946ml/p",
+    "categories": [
+      "/Abarrotes/Repostería/Ingredientes y Complementos de Decoración/",
+      "/Abarrotes/Repostería/",
+      "/Abarrotes/"
+    ],
+    "items": [
+      {
+        "itemId": "8839",
+        "name": "Crema de Leche Gloria 946ml",
+        "ean": "7751271038683",
+        "measurementUnit": "un",
+        "unitMultiplier": 1.0,
+        "sellers": [
+          {
+            "sellerId": "1",
+            "sellerName": "CENCOSUD RETAIL PERU S.A.",
+            "sellerDefault": true,
+            "commertialOffer": {
+              "Price": 26.4,
+              "ListPrice": 26.4,
+              "AvailableQuantity": 100,
+              "IsAvailable": true
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
