@@ -12,12 +12,17 @@
  * that fails (blocked, down, unexpected answer) is reported and skipped; its
  * previous prices stay as they were.
  *
+ * Every store's load is recorded in ScrapeRun (start, end, ok or error,
+ * products saved, error message), and the command exits with an error code
+ * when any store failed, so the daily job shows up as failed.
+ *
  * Usage: npm run prices:load            (all stores)
  *        npm run prices:load -- metro   (only the given store codes)
  */
 import { PrismaClient } from '@prisma/client';
 import { categoryPaths, type VtexCategory } from '../src/prices/categories';
 import { saveStoreProducts } from '../src/prices/save-products';
+import { recordStoreRun } from '../src/prices/scrape-run';
 import { PRICE_STORES, type PriceStore } from '../src/prices/stores';
 import { readCategory, USER_AGENT, type ReaderDeps, type StoreProduct } from '../src/prices/vtex';
 
@@ -67,7 +72,9 @@ async function main() {
   const stores = storesToLoad(process.argv.slice(2));
   const prisma = new PrismaClient();
   try {
-    const results = await Promise.allSettled(stores.map((store) => loadStore(prisma, store)));
+    const results = await Promise.allSettled(
+      stores.map((store) => recordStoreRun(prisma, store.code, () => loadStore(prisma, store))),
+    );
 
     let failed = false;
     results.forEach((result, i) => {

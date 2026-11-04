@@ -38,6 +38,25 @@ function storeProductRow(
   };
 }
 
+/** Fija solo la fecha y hora actuales; los timers siguen siendo reales porque Nest y supertest los usan. */
+function setClock(iso: string) {
+  jest.useFakeTimers({
+    now: new Date(iso),
+    doNotFake: [
+      'hrtime',
+      'nextTick',
+      'performance',
+      'queueMicrotask',
+      'setImmediate',
+      'clearImmediate',
+      'setInterval',
+      'clearInterval',
+      'setTimeout',
+      'clearTimeout',
+    ],
+  });
+}
+
 const plazaVea = { code: 'plazavea', name: 'Plaza Vea', host: 'www.plazavea.com.pe' };
 const wong = { code: 'wong', name: 'Wong', host: 'www.wong.pe' };
 const metro = { code: 'metro', name: 'Metro', host: 'www.metro.pe' };
@@ -62,6 +81,7 @@ describe('GET /products', () => {
   });
 
   afterEach(async () => {
+    jest.useRealTimers();
     await app.close();
   });
 
@@ -109,10 +129,23 @@ describe('GET /products', () => {
     // así que cada palabra buscada llega igual de normalizada.
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           inStock: true,
           AND: [{ searchName: { contains: 'atun' } }, { searchName: { contains: 'enlatado' } }],
-        },
+        }),
+      }),
+    );
+  });
+
+  it('solo muestra precios consultados en las últimas 96 h: el 8 nov. a las 11:00 UTC pide desde el 4 nov. a las 11:00 UTC', async () => {
+    setClock('2026-11-08T11:00:00Z');
+
+    await request(app.getHttpServer()).get('/products').query({ q: 'crema' }).expect(200);
+
+    // El precio de una tienda que no se pudo leer en más de 4 días ya no aparece.
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ observedAt: { gte: new Date('2026-11-04T11:00:00Z') } }),
       }),
     );
   });
@@ -253,10 +286,10 @@ describe('GET /products', () => {
 
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           inStock: true,
           AND: [{ searchName: { contains: 'arroz' } }, { searchName: { contains: 'costeno' } }],
-        },
+        }),
       }),
     );
   });
