@@ -65,7 +65,7 @@ export interface ReaderDeps {
 }
 
 /** Nos identificamos ante la tienda, con un enlace para saber quién lee. */
-const USER_AGENT = 'NutriCompra/0.1 (+https://github.com/ccml1/nutricompra-last)';
+export const USER_AGENT = 'NutriCompra/0.1 (+https://github.com/ccml1/nutricompra-last)';
 
 /** La API de catálogo entrega como máximo 50 productos por petición. */
 const PAGE_SIZE = 50;
