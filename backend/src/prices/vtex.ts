@@ -1,3 +1,5 @@
+import { parseSize, type Size } from './size';
+
 /**
  * Producto tal como lo devuelve la API pública de catálogo de VTEX
  * (`/api/catalog_system/pub/products/search`), solo con los campos que usamos.
@@ -9,6 +11,8 @@ export interface VtexProduct {
   items: {
     itemId: string;
     ean: string;
+    /** "kg" en lo que se vende por peso (su precio es por kg); "un" en lo demás. */
+    measurementUnit?: string;
     sellers: {
       /** El vendedor principal de la tienda; los demás son del marketplace. */
       sellerDefault?: boolean;
@@ -30,6 +34,8 @@ export interface StoreProduct {
   listPriceCents: number;
   inStock: boolean;
   url: string;
+  /** Tamaño total en g o ml, para el precio por kg o L; null si el nombre no lo dice claro. */
+  size: Size | null;
 }
 
 const toCents = (soles: number) => Math.round(soles * 100);
@@ -53,6 +59,7 @@ export function toStoreProduct(store: string, product: VtexProduct): StoreProduc
     listPriceCents: toCents(offer.ListPrice),
     inStock: offer.AvailableQuantity > 0,
     url: product.link,
+    size: parseSize(product.productName, item.measurementUnit),
   };
 }
 

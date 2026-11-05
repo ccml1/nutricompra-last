@@ -32,7 +32,19 @@ describe('toStoreProduct', () => {
       listPriceCents: 2880,
       inStock: true,
       url: 'https://www.wong.pe/crema-de-leche-gloria-946ml-crema-de-leche-gloria-946ml/p',
+      size: { quantity: 946, unit: 'ml' },
     });
+  });
+
+  it('cada producto leído trae su tamaño: la crema de leche de Wong (946ml) → 946 ml, y lo que se vende por kg → 1 kg', () => {
+    const [cremaDeLeche] = fixture('wong-crema-de-leche');
+    // Mismo producto publicado como fruta por peso, como el plátano de Wong ("S/ 3.59 x kg").
+    const platano = structuredClone(cremaDeLeche);
+    platano.productName = 'Plátano de Seda Wong x kg';
+    platano.items[0].measurementUnit = 'kg';
+
+    expect(toStoreProduct('wong', cremaDeLeche).size).toEqual({ quantity: 946, unit: 'ml' });
+    expect(toStoreProduct('wong', platano).size).toEqual({ quantity: 1000, unit: 'g' });
   });
 
   it('un producto sin EAN queda con EAN null, no con texto vacío', () => {

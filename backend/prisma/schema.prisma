@@ -201,6 +201,14 @@ model StoreProduct {
 
   inStock Boolean
 
+  /// Total size in grams or millilitres (946 for "946ml", pack included), used
+  /// for the price per kg or litre. NULL when the name does not say it clearly
+  /// (units, combos, two sizes, unclear packs). Sold by weight → 1000 g.
+  sizeQuantity Int?
+
+  /// "g" or "ml"; NULL together with sizeQuantity.
+  sizeUnit String?
+
   /// When the price was read from the store.
   observedAt DateTime
 

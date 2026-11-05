@@ -44,6 +44,8 @@ describe('saveStoreProducts', () => {
       priceCents: 2880,
       listPriceCents: 2880,
       inStock: true,
+      sizeQuantity: 946,
+      sizeUnit: 'ml',
       observedAt,
     };
     expect(db.storeProduct.upsert).toHaveBeenCalledTimes(1);
@@ -52,6 +54,28 @@ describe('saveStoreProducts', () => {
       create: { storeId: 'store-wong', sourceSku: '8839', ...current },
       update: current,
     });
+  });
+
+  it('guarda el tamaño de cada producto en g o ml, y lo deja vacío si no tiene uno', async () => {
+    const [raw] = JSON.parse(
+      readFileSync(join(__dirname, 'fixtures', 'wong-crema-de-leche.json'), 'utf8'),
+    );
+    const crema = toStoreProduct('wong', raw); // 946 ml
+    const granadilla = { ...crema, sourceSku: '9999', name: 'Granadilla Tipo Exportación 4un.', size: null };
+    const { db, client } = fakeDb();
+
+    await saveStoreProducts(client, wong, [crema, granadilla], observedAt);
+
+    expect(db.storeProduct.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ sourceSku: '8839', sizeQuantity: 946, sizeUnit: 'ml' }),
+      }),
+    );
+    expect(db.storeProduct.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ sourceSku: '9999', sizeQuantity: null, sizeUnit: null }),
+      }),
+    );
   });
 
   it('marca sin stock los productos de la tienda cuyo SKU no apareció en esta lectura', async () => {

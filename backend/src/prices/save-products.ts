@@ -45,6 +45,8 @@ export async function saveStoreProducts(
       priceCents: product.priceCents,
       listPriceCents: product.listPriceCents,
       inStock: product.inStock,
+      sizeQuantity: product.size?.quantity ?? null,
+      sizeUnit: product.size?.unit ?? null,
       observedAt,
     };
     return db.storeProduct.upsert({
