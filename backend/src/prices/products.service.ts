@@ -11,6 +11,24 @@ export interface Offer {
   url: string;
   /** "Mejor precio": el más barato del grupo (todos si empatan); nunca con una sola tienda. */
   isBest: boolean;
+  /** Precio por kg o por litro en céntimos (S/ 30.44 → 3044); null si no se sabe el tamaño. */
+  unitPriceCents: number | null;
+  /** "kg" o "L"; null junto con `unitPriceCents`. */
+  unitPriceBasis: 'kg' | 'L' | null;
+}
+
+/** Como `a - b`, pero Infinity contra Infinity es empate (y no NaN). */
+const compareNumbers = (a: number, b: number) => (a === b ? 0 : a - b);
+
+/** Precio por kg (tamaño en g) o por litro (en ml), redondeado al céntimo. */
+function unitPrice(priceCents: number, sizeQuantity: number | null, sizeUnit: string | null) {
+  if (!sizeQuantity || (sizeUnit !== 'g' && sizeUnit !== 'ml')) {
+    return { unitPriceCents: null, unitPriceBasis: null };
+  }
+  return {
+    unitPriceCents: Math.round((priceCents * 1000) / sizeQuantity),
+    unitPriceBasis: sizeUnit === 'g' ? ('kg' as const) : ('L' as const),
+  };
 }
 
 /** Un producto con su precio en cada tienda que lo vende. */
@@ -41,7 +59,7 @@ export class ProductsService {
    * Productos cuyo nombre contiene todas las palabras buscadas (sin tildes ni
    * mayúsculas), juntando en uno los que comparten clave de grupo.
    */
-  async search(query: string): Promise<ProductGroup[]> {
+  async search(query: string, sort?: string): Promise<ProductGroup[]> {
     const words = searchWords(query);
     // Sin palabras no hay nada que buscar: no se lee la tabla entera.
     if (words.length === 0) return [];
@@ -72,6 +90,7 @@ export class ProductsService {
         observedAt: row.observedAt,
         url: row.url,
         isBest: false,
+        ...unitPrice(row.priceCents, row.sizeQuantity, row.sizeUnit),
       };
       // Una tienda con dos SKUs del mismo producto: queda su precio más bajo.
       const sameStore = group.offers.findIndex((existing) => existing.store === offer.store);
@@ -86,18 +105,31 @@ export class ProductsService {
       for (const offer of offers) offer.isBest = offer.priceCents === lowest;
     }
 
-    // Primero lo que es el alimento buscado (el nombre empieza con el texto: "Manzana
-    // Royal Gala" antes que "Agua sabor a manzana"); luego los que se pueden comparar
-    // en más tiendas; a igual número, por nombre.
+    // Relevancia: los combos al final; primero lo que es el alimento buscado (el nombre
+    // empieza con el texto: "Manzana Royal Gala" antes que "Agua sabor a manzana");
+    // luego los que se pueden comparar en más tiendas; a igual número, por nombre.
     const text = normalizeSearchText(query);
     const startsWithText = (group: ProductGroup) => normalizeSearchText(group.name).startsWith(text);
-    return [...groups.values()]
-      .sort(
-        (a, b) =>
-          Number(startsWithText(b)) - Number(startsWithText(a)) ||
-          b.offers.length - a.offers.length ||
-          spanish.compare(a.name, b.name),
-      )
-      .slice(0, MAX_RESULTS);
+    // Un combo ("Keke + Gaseosa 1.5L") no es el alimento buscado: va al final por relevancia.
+    const isCombo = (group: ProductGroup) => group.name.includes('+');
+    const relevance = (a: ProductGroup, b: ProductGroup) =>
+      Number(isCombo(a)) - Number(isCombo(b)) ||
+      Number(startsWithText(b)) - Number(startsWithText(a)) ||
+      b.offers.length - a.offers.length ||
+      spanish.compare(a.name, b.name);
+    // Cada producto se ordena por su precio más bajo entre las tiendas.
+    const lowest = (group: ProductGroup) => Math.min(...group.offers.map((offer) => offer.priceCents));
+    // El precio por kg o L más bajo entre las tiendas; sin tamaño cuenta como el más caro.
+    const lowestUnit = (group: ProductGroup) =>
+      Math.min(...group.offers.map((offer) => offer.unitPriceCents ?? Infinity));
+    const byName = (a: ProductGroup, b: ProductGroup) => spanish.compare(a.name, b.name);
+    const sorts = new Map<string, (a: ProductGroup, b: ProductGroup) => number>([
+      ['price-asc', (a, b) => lowest(a) - lowest(b) || byName(a, b)],
+      ['price-desc', (a, b) => lowest(b) - lowest(a) || byName(a, b)],
+      ['unit-price', (a, b) => compareNumbers(lowestUnit(a), lowestUnit(b)) || byName(a, b)],
+    ]);
+
+    // Se ordenan todas las coincidencias y recién después se toman las 20 primeras.
+    return [...groups.values()].sort(sorts.get(sort ?? '') ?? relevance).slice(0, MAX_RESULTS);
   }
 }
