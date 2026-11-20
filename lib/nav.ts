@@ -1,4 +1,5 @@
 import {
+  Camera,
   LayoutDashboard,
   ListChecks,
   Salad,
@@ -45,6 +46,12 @@ export const navItems: NavItem[] = [
     href: '/nutrition',
     icon: Sparkles,
     description: 'Ahorro y nutrición',
+  },
+  {
+    label: 'Foto del plato',
+    href: '/plate',
+    icon: Camera,
+    description: 'Calorías con una foto',
   },
   {
     label: 'Mi hogar',
