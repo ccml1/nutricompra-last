@@ -11,6 +11,7 @@ import type {
   ProductPrice,
   ShoppingList,
   StoreProductGroup,
+  StoreSort,
   User,
   WeekPlan,
 } from '@/types'
@@ -91,12 +92,16 @@ export async function getCatalogFoods(): Promise<CatalogFood[]> {
 
 /**
  * Productos de Plaza Vea, Wong y Metro cuyo nombre contiene todas las
- * palabras buscadas, con su precio en cada tienda (máximo 20). `signal`
- * permite cancelar una búsqueda que ya no sirve porque se siguió escribiendo.
+ * palabras buscadas, con su precio en cada tienda (máximo 20), en el orden
+ * elegido. `signal` permite cancelar una búsqueda que ya no sirve porque se
+ * siguió escribiendo.
  */
 export async function searchStoreProducts(
   query: string,
   signal?: AbortSignal,
+  sort: StoreSort = 'relevance',
 ): Promise<StoreProductGroup[]> {
-  return getFromApi(`/products?q=${encodeURIComponent(query)}`, signal)
+  // Relevancia es el orden por defecto del backend: no hace falta enviarlo.
+  const sortParam = sort === 'relevance' ? '' : `&sort=${sort}`
+  return getFromApi(`/products?q=${encodeURIComponent(query)}${sortParam}`, signal)
 }

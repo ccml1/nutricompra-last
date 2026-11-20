@@ -10,6 +10,14 @@ export function formatCurrency(value: number): string {
   return currencyFormatter.format(value).replace('PEN', 'S/').trim()
 }
 
+/**
+ * Formatea el precio por kg o por litro de un producto, p. ej. `S/ 30.44 /L`.
+ * La unidad va pegada con un espacio que no se corta, igual que `S/`.
+ */
+export function formatUnitPrice(cents: number, basis: 'kg' | 'L'): string {
+  return `${formatCurrency(cents / 100)} /${basis}`
+}
+
 /** Formatea un porcentaje entero, p. ej. `73%`. */
 export function formatPercent(value: number): string {
   return `${Math.round(value)}%`

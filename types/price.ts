@@ -38,7 +38,17 @@ export interface StoreOffer {
   url: string
   /** El más barato del producto (todos si empatan); nunca si solo lo vende una tienda. */
   isBest: boolean
+  /** Precio por kg o por litro en céntimos (S/ 30.44 → 3044); null si no se sabe el tamaño. */
+  unitPriceCents: number | null
+  /** "kg" o "L"; null junto con `unitPriceCents`. */
+  unitPriceBasis: 'kg' | 'L' | null
 }
+
+/**
+ * Orden de GET /products: Relevancia (por defecto), Menor precio, Mayor precio
+ * y Menor precio por kg/L.
+ */
+export type StoreSort = 'relevance' | 'price-asc' | 'price-desc' | 'unit-price'
 
 /** Un producto con su precio en cada tienda que lo vende, según GET /products. */
 export interface StoreProductGroup {

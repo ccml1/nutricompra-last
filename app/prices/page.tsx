@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePlan } from '@/hooks/use-plan'
 import { useStoreProducts } from '@/hooks/use-store-products'
-import { formatCurrency } from '@/lib/format'
+import { formatCurrency, formatUnitPrice } from '@/lib/format'
 import { pressableClass } from '@/lib/pressable'
-import type { StoreOffer, StoreProductGroup } from '@/types'
+import type { StoreOffer, StoreProductGroup, StoreSort } from '@/types'
 
 /** El backend devuelve como máximo 20 productos por búsqueda. */
 const MAX_RESULTS = 20
@@ -30,6 +30,14 @@ const stores = [
  * que ellas usan: ninguna escribe "enlatado", dicen "Atún en trozos… lata".
  */
 const storeSearchTerms: Record<string, string> = { 'Atún enlatado': 'Atún' }
+
+/** Órdenes del selector, en el orden en que se muestran. Relevancia es el de siempre. */
+const sortOptions: { value: StoreSort; label: string }[] = [
+  { value: 'relevance', label: 'Relevancia' },
+  { value: 'price-asc', label: 'Menor precio' },
+  { value: 'price-desc', label: 'Mayor precio' },
+  { value: 'unit-price', label: 'Menor precio por kg/L' },
+]
 
 const dayFormatter = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' })
 const dayOf = (offer: StoreOffer) => dayFormatter.format(new Date(offer.observedAt))
@@ -67,13 +75,20 @@ function PriceTile({ offer, storeName, tone, showDay }: { offer?: StoreOffer; st
   }
   const day = dayOf(offer)
   const label = tone === 'best' ? 'Mejor precio' : tone === 'same' ? 'Mismo precio' : null
+  const unitPrice =
+    offer.unitPriceCents !== null && offer.unitPriceBasis !== null
+      ? {
+          text: formatUnitPrice(offer.unitPriceCents, offer.unitPriceBasis),
+          spoken: `${formatCurrency(offer.unitPriceCents / 100)} por ${offer.unitPriceBasis === 'kg' ? 'kilo' : 'litro'}`,
+        }
+      : null
   return (
     <a
       href={offer.url}
       target="_blank"
       rel="noopener noreferrer"
       title={`Ver en ${storeName}`}
-      aria-label={`${storeName}: ${price(offer)}${label ? `, ${label.toLowerCase()}` : ''}, consultado el ${day}. Abre la ficha en la tienda`}
+      aria-label={`${storeName}: ${price(offer)}${unitPrice ? ` (${unitPrice.spoken})` : ''}${label ? `, ${label.toLowerCase()}` : ''}, consultado el ${day}. Abre la ficha en la tienda`}
       className={`group relative flex min-h-12 flex-col items-center justify-center rounded-xl px-2 py-1.5 ${pressableClass} ${
         tone === 'best'
           ? 'bg-primary/10 text-primary ring-1 ring-primary/25 hover:shadow-md hover:shadow-primary/15'
@@ -82,6 +97,7 @@ function PriceTile({ offer, storeName, tone, showDay }: { offer?: StoreOffer; st
     >
       <ArrowUpRight className="absolute right-1.5 top-1.5 size-3 opacity-0 transition-opacity group-hover:opacity-60 motion-reduce:transition-none" aria-hidden="true" />
       <span className="text-base font-semibold tabular-nums sm:text-[17px]">{price(offer)}</span>
+      {unitPrice && <span className="whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">{unitPrice.text}</span>}
       {label && <span className={`whitespace-nowrap text-[11px] font-medium ${tone === 'best' ? 'text-primary' : 'text-muted-foreground'}`}>{label}</span>}
       {showDay && <span className="text-[11px] text-muted-foreground">{day}</span>}
     </a>
@@ -132,7 +148,9 @@ export default function PricesPage() {
   // CA1: se empieza por el primer alimento de la lista; sin lista, solo el buscador.
   const [query, setQuery] = useState(() => listFoods[0] ?? '')
   const [showAllChips, setShowAllChips] = useState(false)
-  const { state, retry } = useStoreProducts(query)
+  // El orden elegido se mantiene al cambiar de alimento; al recargar vuelve a Relevancia.
+  const [sort, setSort] = useState<StoreSort>('relevance')
+  const { state, retry } = useStoreProducts(query, sort)
   const text = query.trim()
 
   const visibleFoods = showAllChips ? listFoods : listFoods.slice(0, CHIP_LIMIT)
@@ -215,14 +233,39 @@ export default function PricesPage() {
               {/* Región viva que existe desde el inicio: los lectores de pantalla anuncian cuando su texto cambia. */}
               <p role="status" className="sr-only">{status}</p>
 
+              {/* El selector sigue en pantalla mientras carga: así no se pierde el foco al cambiar el orden. */}
+              {(state.status === 'loading' || (state.status === 'ready' && products.length > 0)) && (
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-4 sm:px-6">
+                  <div>
+                    <h2 className="text-base font-semibold">
+                      {state.status === 'ready'
+                        ? `${products.length} ${products.length === 1 ? 'producto' : 'productos'}`
+                        : 'Buscando precios…'}
+                    </h2>
+                    {sharedDay && <p className="text-xs text-muted-foreground">Consultados el {sharedDay}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="price-sort" className="text-sm text-muted-foreground">
+                      Ordenar por
+                    </label>
+                    <select
+                      id="price-sort"
+                      value={sort}
+                      onChange={(event) => setSort(event.target.value as StoreSort)}
+                      className={`h-10 cursor-pointer rounded-xl bg-card px-3 text-sm font-medium text-foreground shadow-sm ring-1 ring-border/70 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${pressableClass}`}
+                    >
+                      {sortOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               {state.status === 'ready' && products.length > 0 && (
                 <>
-                  <div className="flex items-baseline justify-between gap-3 px-4 py-4 sm:px-6">
-                    <h2 className="text-base font-semibold">
-                      {products.length} {products.length === 1 ? 'producto' : 'productos'}
-                    </h2>
-                    {sharedDay && <span className="text-xs text-muted-foreground">Consultados el {sharedDay}</span>}
-                  </div>
 
                   {/* Escritorio: tabla de verdad, con la tienda como encabezado de cada columna. */}
                   <table className="hidden w-full sm:table">
