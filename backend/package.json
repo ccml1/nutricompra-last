@@ -36,6 +36,7 @@
     "testEnvironment": "node"
   },
   "dependencies": {
+    "@huggingface/inference": "^4.13.33",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",

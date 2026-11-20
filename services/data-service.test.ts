@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { searchStoreProducts } from './data-service'
+import { askNutritionChat, searchStoreProducts } from './data-service'
 
 describe('searchStoreProducts', () => {
   const originalAny = AbortSignal.any
@@ -20,6 +20,58 @@ describe('searchStoreProducts', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       'http://api.test/products?q=leche%20gloria',
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+  })
+})
+
+/** Respuesta de fetch cuyo cuerpo llega en partes, como el texto que va escribiendo el modelo. */
+function streamedResponse(parts: string[]) {
+  const encoder = new TextEncoder()
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const part of parts) controller.enqueue(encoder.encode(part))
+      controller.close()
+    },
+  })
+  return new Response(body, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+}
+
+describe('askNutritionChat', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
+  it('envía la conversación y el contexto, y entrega la respuesta a medida que llega', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test')
+    const fetchMock = vi.fn(async () => streamedResponse(['La quinua ', 'tiene 13.6 g ', 'de proteína.']))
+    vi.stubGlobal('fetch', fetchMock)
+    const messages = [{ role: 'user' as const, content: '¿Cuánta proteína tiene la quinua?' }]
+    const parts: string[] = []
+
+    const answer = await askNutritionChat(messages, { weeklyBudget: 180 }, (text) => parts.push(text))
+
+    expect(answer).toBe('La quinua tiene 13.6 g de proteína.')
+    expect(parts.join('')).toBe(answer)
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://api.test/chat',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, context: { weeklyBudget: 180 } }),
+      }),
+    )
+  })
+
+  it('si el backend responde con error, falla con su mensaje', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ message: 'Hiciste muchas preguntas seguidas. Espera unos minutos.' }, { status: 429 })),
+    )
+
+    await expect(askNutritionChat([{ role: 'user', content: 'Hola' }], {}, () => undefined)).rejects.toThrow(
+      'Hiciste muchas preguntas seguidas. Espera unos minutos.',
     )
   })
 })
