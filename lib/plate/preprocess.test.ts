@@ -1,23 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { MODEL_HEIGHT, MODEL_WIDTH, letterbox, toChw } from './preprocess'
+import { CLIP_SIZE, clipCrop, toClipInput } from './preprocess'
 
-describe('letterbox', () => {
-  it('encaja la foto en 504 x 378 sin deformarla y la centra (como el script oficial)', () => {
-    // Foto cuadrada de 128 px: se agranda a 378 x 378 y queda centrada a lo ancho.
-    expect(letterbox(128, 128)).toEqual({ width: 378, height: 378, x: 63, y: 0 })
-    // Foto 4:3 de un celular: ocupa todo el lienzo.
-    expect(letterbox(4000, 3000)).toEqual({ width: 504, height: 378, x: 0, y: 0 })
-    expect([MODEL_WIDTH, MODEL_HEIGHT]).toEqual([504, 378])
+describe('clipCrop', () => {
+  it('lleva el lado corto a 224 px y recorta el centro, como el procesador de CLIP', () => {
+    // Foto 4:3 de celular: 299 x 224 y se recorta el centro (sobran 75 px de ancho).
+    expect(clipCrop(640, 480)).toEqual({ width: 299, height: 224, x: -38, y: 0 })
+    // Foto vertical: 224 x 299, se recorta arriba y abajo.
+    expect(clipCrop(480, 640)).toEqual({ width: 224, height: 299, x: 0, y: -38 })
+    expect(CLIP_SIZE).toBe(224)
   })
 })
 
-describe('toChw', () => {
-  it('pasa los píxeles RGBA a canales separados (rojo, verde, azul) entre 0 y 1', () => {
-    // Dos píxeles: rojo puro y gris (51, 102, 153). El canal alfa se descarta.
-    const rgba = new Uint8ClampedArray([255, 0, 0, 255, 51, 102, 153, 255])
+describe('toClipInput', () => {
+  it('pasa los píxeles a canales rojo, verde y azul normalizados con la media y desviación de CLIP', () => {
+    // Un píxel gris medio (128, 128, 128): (128/255 − media) / desviación por canal.
+    const input = toClipInput(new Uint8ClampedArray([128, 128, 128, 255]), 1, 1)
+    const expected = [(128 / 255 - 0.48145466) / 0.26862954, (128 / 255 - 0.4578275) / 0.26130258, (128 / 255 - 0.40821073) / 0.27577711]
 
-    // Float32Array: 0.2 se guarda como 0.2000000029…, por eso se compara con tolerancia.
-    const expected = [1, 0.2, 0, 0.4, 0, 0.6]
-    Array.from(toChw(rgba, 2, 1)).forEach((value, i) => expect(value).toBeCloseTo(expected[i], 6))
+    Array.from(input).forEach((value, i) => expect(value).toBeCloseTo(expected[i], 5))
   })
 })

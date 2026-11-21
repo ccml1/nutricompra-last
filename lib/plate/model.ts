@@ -1,23 +1,22 @@
 /**
- * Calorie Lens en el navegador (onnxruntime-web): descarga el modelo de
- * Hugging Face una sola vez, lo guarda en la caché del navegador y estima los
- * ingredientes y nutrientes de la foto de un plato. La foto no sale del equipo.
- *
- * Modelo: shalev396/calorie-lens (MIT), exportado a ONNX en
- * addisonbk/calorie-lens-onnx. Licencias en public/models/calorie-lens/.
+ * Reconocimiento de alimentos en el navegador con CLIP (openai/clip-vit-base-patch16,
+ * MIT, exportado a ONNX por Xenova en Hugging Face) y onnxruntime-web. Solo se usa
+ * la parte de visión: los vectores de los alimentos TPCA ya están calculados en
+ * public/models/clip-foods (scripts/build-food-embeddings.mjs). El modelo se
+ * descarga una vez y queda guardado en el navegador; la foto no sale del equipo.
  */
-import { imageToModelInput, MODEL_HEIGHT, MODEL_WIDTH } from './preprocess'
-import { readPlate, type PlateConfig, type PlateReadout } from './readout'
+import { CLIP_SIZE, imageToClipInput } from './preprocess'
+import { suggestFoods, type FoodEmbedding } from './suggest'
 
 /** Versión fija del repositorio en Hugging Face, para que el archivo no cambie sin aviso. */
-const REVISION = 'c8cbd0add09d605b028337f46c185436f2a80521'
-const MODEL_URL = `https://huggingface.co/addisonbk/calorie-lens-onnx/resolve/${REVISION}/calorie_lens_image_fp32.onnx`
-/** Tamaño y huella SHA-256 publicados por el autor de la exportación. */
-export const MODEL_BYTES = 356_487_372
-const MODEL_SHA256 = 'c19d3329d9df8fd6083f424c336fa435d9e87c26864b4c7181a0a4c10a618c16'
-const CONFIG_URL = '/models/calorie-lens/config.json'
+const REVISION = '342fdf2f67aded64d138ff074745fb4a5d2bba5f'
+const MODEL_URL = `https://huggingface.co/Xenova/clip-vit-base-patch16/resolve/${REVISION}/onnx/vision_model_quantized.onnx`
+/** Tamaño y huella SHA-256 del archivo publicados por Hugging Face. */
+export const MODEL_BYTES = 87_461_602
+const MODEL_SHA256 = '44eece4fe5fe4e0359a88268a327adf758633a1aade3917690b952bef1501f96'
+const EMBEDDINGS_URL = '/models/clip-foods/text-embeddings.json'
 /** Archivo donde el navegador guarda el modelo (almacenamiento privado del sitio, OPFS). */
-const MODEL_FILE = `calorie-lens-${REVISION.slice(0, 7)}.onnx`
+const MODEL_FILE = `clip-vit-b16-vision-${REVISION.slice(0, 7)}.onnx`
 
 /** Avance de la descarga del modelo, de 0 a 1 (1 si ya estaba guardado). */
 export type DownloadProgress = (fraction: number) => void
@@ -29,7 +28,7 @@ async function sha256(buffer: ArrayBuffer): Promise<string> {
 
 /**
  * El modelo guardado de una visita anterior. Se usa OPFS y no la caché del
- * navegador: Chrome rechaza guardar en la caché un archivo de este tamaño.
+ * navegador, que en Chrome rechaza archivos grandes.
  */
 async function readSavedModel(): Promise<ArrayBuffer | null> {
   try {
@@ -60,7 +59,6 @@ async function downloadModel(onProgress: DownloadProgress): Promise<ArrayBuffer>
     onProgress(1)
     return saved
   }
-
   const response = await fetch(MODEL_URL)
   if (!response.ok || !response.body) throw new Error(`No se pudo descargar el modelo (${response.status})`)
   const total = Number(response.headers.get('content-length')) || MODEL_BYTES
@@ -85,24 +83,24 @@ async function downloadModel(onProgress: DownloadProgress): Promise<ArrayBuffer>
 }
 
 type Ort = typeof import('onnxruntime-web/webgpu')
-type Loaded = { ort: Ort; session: import('onnxruntime-web/webgpu').InferenceSession; config: PlateConfig }
+type Loaded = { ort: Ort; session: import('onnxruntime-web/webgpu').InferenceSession; foods: FoodEmbedding[] }
 
 let loading: Promise<Loaded> | null = null
 
-/** Carga el modelo una sola vez por pestaña; si falla, el siguiente intento empieza de cero. */
-export function loadPlateModel(onProgress: DownloadProgress): Promise<Loaded> {
+/** Carga el modelo y los vectores de los alimentos una sola vez por pestaña; si falla, se reintenta de cero. */
+function loadModel(onProgress: DownloadProgress): Promise<Loaded> {
   loading ??= (async () => {
     const ort = await import('onnxruntime-web/webgpu')
     // Los binarios de onnxruntime (WASM) se sirven desde jsDelivr, en la misma versión instalada.
     ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ort.env.versions.web}/dist/`
-    const [buffer, config] = await Promise.all([
+    const [buffer, foods] = await Promise.all([
       downloadModel(onProgress),
-      fetch(CONFIG_URL).then((response) => {
-        if (!response.ok) throw new Error('No se pudo leer la configuración del modelo')
-        return response.json() as Promise<PlateConfig>
+      fetch(EMBEDDINGS_URL).then((response) => {
+        if (!response.ok) throw new Error('No se pudo leer la lista de alimentos del modelo')
+        return response.json().then((data: { foods: FoodEmbedding[] }) => data.foods)
       }),
     ])
-    // WebGPU (tarjeta gráfica) es mucho más rápido; si el navegador no lo tiene o falla, WASM.
+    // WebGPU (tarjeta gráfica) es más rápido; si el navegador no lo tiene o falla, WASM.
     const create = (executionProviders: string[]) =>
       ort.InferenceSession.create(buffer, { executionProviders, graphOptimizationLevel: 'all' })
     let session
@@ -111,7 +109,7 @@ export function loadPlateModel(onProgress: DownloadProgress): Promise<Loaded> {
     } catch {
       session = await create(['wasm'])
     }
-    return { ort, session, config }
+    return { ort, session, foods }
   })().catch((error: unknown) => {
     loading = null
     throw error
@@ -119,20 +117,17 @@ export function loadPlateModel(onProgress: DownloadProgress): Promise<Loaded> {
   return loading
 }
 
-/** Ingredientes, gramos y nutrientes del plato de la foto. */
-export async function analyzePlate(photo: Blob, onProgress: DownloadProgress): Promise<PlateReadout> {
-  const { ort, session, config } = await loadPlateModel(onProgress)
-  const input = await imageToModelInput(photo)
+/** Los alimentos TPCA que probablemente se ven en la foto, de más a menos probable. */
+export async function recognizeFoods(photo: Blob, onProgress: DownloadProgress) {
+  const { ort, session, foods } = await loadModel(onProgress)
+  const input = await imageToClipInput(photo)
   const outputs = await session.run({
-    food_image: new ort.Tensor('float32', input, [1, 3, MODEL_HEIGHT, MODEL_WIDTH]),
+    pixel_values: new ort.Tensor('float32', input, [1, 3, CLIP_SIZE, CLIP_SIZE]),
   })
-  return readPlate(
-    {
-      grams: outputs.grams.data as Float32Array,
-      logits: outputs.logits.data as Float32Array,
-      massGap: Number((outputs.mass_gap.data as Float32Array)[0]),
-      logTotals: outputs.log_totals.data as Float32Array,
-    },
-    config,
+  const embedding = Array.from(outputs.image_embeds.data as Float32Array)
+  const norm = Math.hypot(...embedding)
+  return suggestFoods(
+    embedding.map((value) => value / norm),
+    foods,
   )
 }
