@@ -1,26 +1,24 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Camera, Loader2, Menu, RotateCcw, ScanLine, X } from 'lucide-react'
+import { Camera, Loader2, Menu, RotateCcw, X } from 'lucide-react'
 import { AppSidebar } from '@/components/app/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { useCatalogFoods } from '@/hooks/use-catalog-foods'
+import { entriesFromAnalysis, plateFromEntries, type PlateEntry } from '@/lib/plate/entries'
 import { plateFoodByName, plateFoods } from '@/lib/plate/foods'
 import { recognizeFoods } from '@/lib/plate/model'
-import { plateNutrition } from '@/lib/plate/nutrition'
+import { photoToJpegDataUrl } from '@/lib/plate/preprocess'
 import { pressableClass } from '@/lib/pressable'
+import { analyzePlatePhoto, ApiError } from '@/services/data-service'
 
 type Status =
   | { step: 'idle' }
-  | { step: 'preparing' }
-  | { step: 'downloading'; progress: number }
   | { step: 'analyzing' }
+  | { step: 'downloading'; progress: number }
   | { step: 'error'; message: string }
-
-/** Un alimento del plato: su nombre TPCA, los gramos que escribe la persona y, si lo propuso la foto, qué tan probable es. */
-type Entry = { name: string; grams: string; probability?: number }
 
 const summaryItems = [
   { key: 'proteinG', label: 'Proteínas' },
@@ -29,24 +27,20 @@ const summaryItems = [
   { key: 'fiberG', label: 'Fibra' },
 ] as const
 
-const missingLabels: Record<string, string> = {
-  energyKcal: 'calorías',
-  proteinG: 'proteínas',
-  carbohydrateG: 'carbohidratos',
-  fatG: 'grasas',
-  fiberG: 'fibra',
-}
-
 const whole = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 0 })
 const decimal = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 1 })
-const toGrams = (text: string) => Math.max(0, Number(text.replace(',', '.')) || 0)
+const defaultGrams = (name: string) => String(plateFoodByName.get(name)?.portionG ?? 100)
 
 export default function PlatePage() {
   const catalog = useCatalogFoods()
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [status, setStatus] = useState<Status>({ step: 'idle' })
-  const [entries, setEntries] = useState<Entry[]>([])
+  const [entries, setEntries] = useState<PlateEntry[]>([])
+  const [dish, setDish] = useState<string | null>(null)
+  /** Aviso cuando no respondió el modelo de visión y se usó el reconocimiento básico. */
+  const [fallbackNote, setFallbackNote] = useState<string | null>(null)
+  const [analyzed, setAnalyzed] = useState(false)
 
   // La vista previa usa una URL local de la foto; se libera al cambiarla.
   useEffect(() => {
@@ -56,48 +50,67 @@ export default function PlatePage() {
     return () => URL.revokeObjectURL(url)
   }, [photo])
 
-  const working = status.step === 'preparing' || status.step === 'downloading' || status.step === 'analyzing'
+  const working = status.step === 'analyzing' || status.step === 'downloading'
 
-  const recognize = async () => {
-    if (!photo) return
-    // Hasta saber si el modelo ya está guardado, no se habla de descarga.
-    setStatus({ step: 'preparing' })
+  /** Si el modelo de visión no está disponible, el reconocimiento básico (CLIP, en el navegador) propone los alimentos. */
+  const recognizeBasic = async (file: File, reason: string) => {
+    const suggestions = await recognizeFoods(file, (progress) =>
+      setStatus(progress < 1 ? { step: 'downloading', progress } : { step: 'analyzing' }),
+    )
+    setEntries(suggestions.map(({ name, probability }) => ({ name, probability, grams: defaultGrams(name) })))
+    setDish(null)
+    setFallbackNote(reason)
+  }
+
+  const analyze = async (file: File) => {
+    setStatus({ step: 'analyzing' })
+    setFallbackNote(null)
     try {
-      const suggestions = await recognizeFoods(photo, (progress) =>
-        setStatus(progress < 1 ? { step: 'downloading', progress } : { step: 'analyzing' }),
-      )
-      setEntries(
-        suggestions.map(({ name, probability }) => ({
-          name,
-          probability,
-          grams: String(plateFoodByName.get(name)?.portionG ?? 100),
-        })),
-      )
+      const analysis = await analyzePlatePhoto(await photoToJpegDataUrl(file))
+      setEntries(entriesFromAnalysis(analysis))
+      setDish(analysis.dish)
       setStatus({ step: 'idle' })
     } catch (error) {
-      console.error('No se pudo reconocer la foto:', error)
-      setStatus({ step: 'error', message: 'No pudimos analizar la foto. Revisa tu conexión e inténtalo de nuevo.' })
+      if (error instanceof ApiError && (error.status === 400 || error.status === 413)) {
+        setStatus({ step: 'error', message: error.message })
+        return
+      }
+      // Camino previsto (límite de Groq, sin conexión): se avisa en la consola, no es un error de la app.
+      console.warn('El modelo de visión no respondió; se usa el reconocimiento básico:', error)
+      try {
+        const reason =
+          error instanceof ApiError && error.status === 429
+            ? 'El análisis detallado está ocupado; usamos el reconocimiento básico con porciones habituales.'
+            : 'No hubo conexión con el análisis detallado; usamos el reconocimiento básico con porciones habituales.'
+        await recognizeBasic(file, reason)
+        setStatus({ step: 'idle' })
+      } catch (fallbackError) {
+        console.error('Tampoco funcionó el reconocimiento básico:', fallbackError)
+        setStatus({ step: 'error', message: 'No pudimos analizar la foto. Revisa tu conexión e inténtalo de nuevo.' })
+      }
+    } finally {
+      setAnalyzed(true)
     }
+  }
+
+  const choosePhoto = (file: File) => {
+    setPhoto(file)
+    setEntries([])
+    setDish(null)
+    setAnalyzed(false)
+    void analyze(file)
   }
 
   const addFood = (name: string) => {
     if (!name || entries.some((entry) => entry.name === name)) return
-    setEntries([...entries, { name, grams: String(plateFoodByName.get(name)?.portionG ?? 100) }])
+    setEntries([...entries, { name, grams: defaultGrams(name) }])
   }
 
-  // Las calorías salen de la tabla TPCA con los gramos que confirma la persona.
   const nutrientsByName = useMemo(
     () => new Map(catalog.status === 'ready' ? catalog.foods.map((food) => [food.name, food.nutrients]) : []),
     [catalog],
   )
-  const plate = plateNutrition(
-    entries.flatMap((entry) => {
-      const nutrients = nutrientsByName.get(entry.name)
-      return nutrients
-        ? [{ food: { name: entry.name, nutrients }, grams: toGrams(entry.grams), cookedYield: plateFoodByName.get(entry.name)?.cookedYield ?? 1 }]
-        : []
-    }),
-  )
+  const plate = plateFromEntries(entries, nutrientsByName)
   const kcalByName = new Map(plate.items.map((item) => [item.name, item.kcal]))
   const available = plateFoods.filter((food) => !entries.some((entry) => entry.name === food.name))
 
@@ -112,7 +125,7 @@ export default function PlatePage() {
             </Button>
             <div>
               <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Foto del plato</h1>
-              <p className="mt-0.5 text-sm text-muted-foreground">Reconoce los alimentos y calcula las calorías con la tabla peruana</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">Toma una foto y te decimos sus calorías y nutrientes</p>
             </div>
           </div>
         </header>
@@ -140,50 +153,56 @@ export default function PlatePage() {
                     capture="environment"
                     className="sr-only"
                     aria-label="Elegir la foto del plato"
+                    disabled={working}
                     onChange={(event) => {
                       const file = event.target.files?.[0]
-                      if (file) {
-                        setPhoto(file)
-                        setStatus({ step: 'idle' })
-                      }
+                      if (file) choosePhoto(file)
+                      event.target.value = ''
                     }}
                   />
                 </label>
 
                 <div className="flex flex-1 flex-col justify-center gap-4">
                   <p className="text-sm text-muted-foreground">
-                    La foto propone los alimentos del plato. Tú confirmas cuáles son y cuántos gramos hay, y las calorías se calculan con la Tabla Peruana de Composición de Alimentos.
+                    Al elegir la foto, la analizamos al momento: qué alimentos hay y cuántos gramos, y calculamos las calorías con la Tabla Peruana de Composición de Alimentos.
                   </p>
-                  <Button onClick={recognize} disabled={!photo || working} className="h-11 rounded-xl text-base">
-                    {working ? <Loader2 className="animate-spin motion-reduce:animate-none" data-icon="inline-start" /> : <ScanLine data-icon="inline-start" />}
-                    Reconocer alimentos
-                  </Button>
                   <div role="status" className="text-sm text-muted-foreground">
-                    {status.step === 'preparing' && <span>Preparando el modelo…</span>}
+                    {status.step === 'analyzing' && (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Analizando la foto…
+                      </span>
+                    )}
                     {status.step === 'downloading' && (
                       <div className="flex flex-col gap-2">
-                        <span>Descargando el modelo (solo la primera vez, ~88 MB): {Math.round(status.progress * 100)} %</span>
+                        <span>Preparando el reconocimiento básico (solo la primera vez, ~88 MB): {Math.round(status.progress * 100)} %</span>
                         <Progress value={status.progress * 100} aria-label="Descarga del modelo" />
                       </div>
                     )}
-                    {status.step === 'analyzing' && <span>Mirando la foto…</span>}
                     {status.step === 'error' && (
-                      <span className="flex items-center gap-2 text-destructive">
+                      <span className="flex flex-wrap items-center gap-2 text-destructive">
                         {status.message}
-                        <button type="button" onClick={recognize} className="inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline">
-                          <RotateCcw className="size-3.5" aria-hidden="true" /> Reintentar
-                        </button>
+                        {photo && (
+                          <button type="button" onClick={() => void analyze(photo)} className="inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline">
+                            <RotateCcw className="size-3.5" aria-hidden="true" /> Reintentar
+                          </button>
+                        )}
                       </span>
                     )}
                   </div>
+                  {photo && status.step === 'idle' && analyzed && (
+                    <Button variant="outline" onClick={() => void analyze(photo)} className="h-10 self-start rounded-xl">
+                      <RotateCcw data-icon="inline-start" /> Volver a analizar
+                    </Button>
+                  )}
                 </div>
               </div>
             </section>
 
-            {(entries.length > 0 || catalog.status === 'ready') && (
+            {analyzed && status.step !== 'error' && (
               <section aria-label="Alimentos del plato" className="overflow-clip rounded-2xl bg-card shadow-sm ring-1 ring-border/60">
                 <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border/60 px-4 py-5 sm:px-6">
                   <div>
+                    {dish && <p className="text-sm font-medium text-primary">{dish}</p>}
                     <p className="text-sm text-muted-foreground">Calorías del plato</p>
                     <p className="font-heading text-4xl font-bold tabular-nums">
                       {whole.format(plate.totals.kcal)} <span className="text-xl font-semibold text-muted-foreground">kcal</span>
@@ -204,18 +223,19 @@ export default function PlatePage() {
                 </dl>
 
                 <div className="px-4 py-4 sm:px-6">
-                  <h2 className="text-base font-semibold">Alimentos en tu plato</h2>
+                  <h2 className="text-base font-semibold">Lo que hay en tu plato</h2>
+                  {fallbackNote && <p className="mt-1 text-xs text-muted-foreground">{fallbackNote}</p>}
                   {entries.length === 0 && (
-                    <p className="mt-2 text-sm text-muted-foreground">Reconoce una foto o agrega los alimentos a mano.</p>
+                    <p className="mt-2 text-sm text-muted-foreground">No vimos comida en la foto. Prueba con otra o agrega los alimentos a mano.</p>
                   )}
                   <ul className="mt-1 divide-y divide-border/60">
                     {entries.map((entry, i) => {
-                      const food = plateFoodByName.get(entry.name)
-                      const cooked = food && food.cookedYield !== 1
+                      const cooked = !entry.per100g && (plateFoodByName.get(entry.name)?.cookedYield ?? 1) !== 1
                       return (
-                        <li key={entry.name} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+                        <li key={`${entry.name}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                           <div className="min-w-0 flex-1">
                             <p className="text-[15px] font-medium">{entry.name}</p>
+                            {entry.per100g && <p className="text-xs text-muted-foreground">Fuera de la tabla peruana · valor estimado</p>}
                             {entry.probability !== undefined && (
                               <p className="text-xs text-muted-foreground">Visto en la foto · {Math.round(entry.probability * 100)} %</p>
                             )}
@@ -261,12 +281,6 @@ export default function PlatePage() {
                       ))}
                     </select>
                   </label>
-
-                  {plate.missing.length > 0 && (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      La tabla no tiene {plate.missing.map((key) => missingLabels[key] ?? key).join(' ni ')} de algún alimento; ese total puede quedar corto.
-                    </p>
-                  )}
                 </div>
               </section>
             )}
@@ -276,7 +290,7 @@ export default function PlatePage() {
             )}
 
             <p className="px-4 text-center text-xs leading-relaxed text-muted-foreground">
-              Reconocimiento con CLIP (Hugging Face) en tu equipo: la foto no se envía a ningún servidor. Los valores de la tabla en crudo (arroz, menestras, carnes) se ajustan a cocidos con un factor aproximado.
+              La foto se envía para analizarla con Qwen3.8, un modelo abierto de Hugging Face, y no se guarda. Es una estimación: los gramos y las calorías pueden variar.
             </p>
           </div>
         </div>

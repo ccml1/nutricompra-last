@@ -8,6 +8,7 @@ import type {
   CatalogFood,
   ChatContext,
   ChatMessage,
+  PlateAnalysis,
   Food,
   Household,
   ProductPrice,
@@ -153,5 +154,46 @@ export async function askNutritionChat(
   } finally {
     clearTimeout(timer)
     signal?.removeEventListener('abort', cancel)
+  }
+}
+
+/** Error del backend con su código HTTP y el mensaje que explica el problema. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message)
+  }
+}
+
+/** Analizar una foto toma unos segundos; más de 45 s es que algo falló. */
+const PLATE_TIMEOUT_MS = 45_000
+
+/**
+ * Manda la foto del plato (JPEG en base64, ya achicada) al backend, que le
+ * pregunta al modelo de visión qué alimentos hay y cuántos gramos.
+ */
+export async function analyzePlatePhoto(image: string): Promise<PlateAnalysis> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  if (!apiUrl) {
+    throw new Error('Falta NEXT_PUBLIC_API_URL: defínela en .env.local (ver .env.example)')
+  }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), PLATE_TIMEOUT_MS)
+  try {
+    const response = await fetch(`${apiUrl}/plate/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image }),
+      signal: controller.signal,
+    })
+    const body = (await response.json().catch(() => null)) as (PlateAnalysis & { message?: string }) | null
+    if (!response.ok || !body) {
+      throw new ApiError(response.status, body?.message ?? `POST /plate/analyze respondió ${response.status}`)
+    }
+    return body
+  } finally {
+    clearTimeout(timer)
   }
 }

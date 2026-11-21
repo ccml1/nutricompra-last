@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { askNutritionChat, searchStoreProducts } from './data-service'
+import { analyzePlatePhoto, ApiError, askNutritionChat, searchStoreProducts } from './data-service'
 
 describe('searchStoreProducts', () => {
   const originalAny = AbortSignal.any
@@ -73,5 +73,35 @@ describe('askNutritionChat', () => {
     await expect(askNutritionChat([{ role: 'user', content: 'Hola' }], {}, () => undefined)).rejects.toThrow(
       'Hiciste muchas preguntas seguidas. Espera unos minutos.',
     )
+  })
+})
+
+describe('analyzePlatePhoto', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
+  it('envía la foto al backend y devuelve el plato con sus alimentos', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test')
+    const analysis = { dish: 'Omelette', foods: [{ name: 'Huevo', grams: 120, inCatalog: true }] }
+    const fetchMock = vi.fn(async () => Response.json(analysis))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(analyzePlatePhoto('data:image/jpeg;base64,AAAA')).resolves.toEqual(analysis)
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://api.test/plate/analyze',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ image: 'data:image/jpeg;base64,AAAA' }) }),
+    )
+  })
+
+  it('si el backend responde con error, falla con su código y su mensaje', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test')
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ message: 'Espera unos segundos.' }, { status: 429 })))
+
+    const error = await analyzePlatePhoto('data:image/jpeg;base64,AAAA').catch((problem: unknown) => problem)
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 429, message: 'Espera unos segundos.' })
   })
 })

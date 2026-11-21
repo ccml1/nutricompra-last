@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ChatModule } from './chat/chat.module';
 import { FoodsModule } from './foods/foods.module';
+import { PlateModule } from './plate/plate.module';
 import { PricesModule } from './prices/prices.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -11,7 +12,8 @@ import { PrismaModule } from './prisma/prisma.module';
   // FoodsModule serves GET /foods (TPCA catalog with nutrition data).
   // PricesModule serves GET /products (store prices to compare).
   // ChatModule serves POST /chat (nutrition assistant on Hugging Face).
-  imports: [PrismaModule, FoodsModule, PricesModule, ChatModule],
+  // PlateModule serves POST /plate/analyze (foods and grams from a plate photo).
+  imports: [PrismaModule, FoodsModule, PricesModule, ChatModule, PlateModule],
   controllers: [AppController],
   providers: [AppService],
 })

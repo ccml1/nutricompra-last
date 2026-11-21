@@ -38,3 +38,21 @@ export async function imageToClipInput(image: Blob): Promise<Float32Array> {
   bitmap.close()
   return toClipInput(context.getImageData(0, 0, CLIP_SIZE, CLIP_SIZE).data, CLIP_SIZE, CLIP_SIZE)
 }
+
+/** Lado mayor de la foto que se envía al modelo de visión: suficiente para ver el plato y liviana (~150 KB). */
+const UPLOAD_MAX_SIDE = 768
+
+/** La foto achicada como JPEG en base64 (data URL), lista para enviar. Solo en el navegador. */
+export async function photoToJpegDataUrl(image: Blob, maxSide = UPLOAD_MAX_SIDE): Promise<string> {
+  const bitmap = await createImageBitmap(image, { imageOrientation: 'from-image' })
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('El navegador no puede preparar la foto')
+  context.imageSmoothingQuality = 'high'
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  return canvas.toDataURL('image/jpeg', 0.85)
+}
