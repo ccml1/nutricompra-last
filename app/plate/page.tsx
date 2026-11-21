@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Camera, Loader2, Menu, RotateCcw, X } from 'lucide-react'
 import { AppSidebar } from '@/components/app/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { useCatalogFoods } from '@/hooks/use-catalog-foods'
 import { entriesFromAnalysis, plateFromEntries, type PlateEntry } from '@/lib/plate/entries'
 import { plateFoodByName, plateFoods } from '@/lib/plate/foods'
 import { recognizeFoods } from '@/lib/plate/model'
@@ -32,7 +31,6 @@ const decimal = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 1 })
 const defaultGrams = (name: string) => String(plateFoodByName.get(name)?.portionG ?? 100)
 
 export default function PlatePage() {
-  const catalog = useCatalogFoods()
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [status, setStatus] = useState<Status>({ step: 'idle' })
@@ -106,11 +104,7 @@ export default function PlatePage() {
     setEntries([...entries, { name, grams: defaultGrams(name) }])
   }
 
-  const nutrientsByName = useMemo(
-    () => new Map(catalog.status === 'ready' ? catalog.foods.map((food) => [food.name, food.nutrients]) : []),
-    [catalog],
-  )
-  const plate = plateFromEntries(entries, nutrientsByName)
+  const plate = plateFromEntries(entries)
   const kcalByName = new Map(plate.items.map((item) => [item.name, item.kcal]))
   const available = plateFoods.filter((food) => !entries.some((entry) => entry.name === food.name))
 
@@ -283,10 +277,6 @@ export default function PlatePage() {
                   </label>
                 </div>
               </section>
-            )}
-
-            {catalog.status === 'error' && (
-              <p className="text-center text-sm text-destructive">No se pudo cargar la tabla de alimentos. Recarga la página para intentarlo de nuevo.</p>
             )}
 
             <p className="px-4 text-center text-xs leading-relaxed text-muted-foreground">

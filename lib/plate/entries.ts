@@ -1,4 +1,4 @@
-import { plateFoodByName } from '@/lib/plate/foods'
+import { plateFoodByName, plateNutrientsByName } from '@/lib/plate/foods'
 import { plateNutrition, type TpcaNutrients } from '@/lib/plate/nutrition'
 import type { EstimatedPer100g, PlateAnalysis } from '@/types'
 
@@ -29,7 +29,7 @@ const toGrams = (text: string) => Math.max(0, Number(text.replace(',', '.')) || 
  * Nutrientes del plato: lo del catálogo con la tabla TPCA y su rendimiento de
  * cocción; lo demás con el valor estimado por 100 g (tal como se sirve).
  */
-export function plateFromEntries(entries: PlateEntry[], catalog: Map<string, TpcaNutrients>) {
+export function plateFromEntries(entries: PlateEntry[], catalog: Map<string, TpcaNutrients> = plateNutrientsByName) {
   return plateNutrition(
     entries.flatMap((entry) => {
       const grams = toGrams(entry.grams)

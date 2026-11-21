@@ -38,4 +38,12 @@ describe('plateFromEntries', () => {
     expect(Math.round(plate.totals.kcal)).toBe(300)
     expect(plate.totals.grams).toBe(190)
   })
+
+  it('sin catálogo del backend usa la tabla TPCA que viaja con la página (nunca 0 kcal)', () => {
+    // Lentejas TPCA: 211 kcal por 100 g; 150 g cocidos / 3 de rendimiento = 50 g → 106 kcal.
+    const plate = plateFromEntries([{ name: 'Lentejas', grams: '150' }])
+
+    expect(plate.items).toHaveLength(1)
+    expect(Math.round(plate.totals.kcal)).toBe(106)
+  })
 })

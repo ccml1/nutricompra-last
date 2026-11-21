@@ -14,6 +14,7 @@ describe('plateFoods', () => {
     for (const food of plateFoods) {
       expect(food.portionG).toBeGreaterThan(0)
       expect(food.cookedYield).toBeGreaterThan(0)
+      expect(food.nutrients.energyKcal).toEqual(expect.any(Number))
     }
   })
 
