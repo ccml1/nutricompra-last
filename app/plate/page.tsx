@@ -36,8 +36,11 @@ export default function PlatePage() {
   const [status, setStatus] = useState<Status>({ step: 'idle' })
   const [entries, setEntries] = useState<PlateEntry[]>([])
   const [dish, setDish] = useState<string | null>(null)
-  /** Aviso cuando no respondió el modelo de visión y se usó el reconocimiento básico. */
-  const [fallbackNote, setFallbackNote] = useState<string | null>(null)
+  /**
+   * true cuando no respondió el modelo de visión y se usó el reconocimiento básico:
+   * solo se nombra el alimento principal y se muestra el total, sin la lista de candidatos.
+   */
+  const [basic, setBasic] = useState(false)
   const [analyzed, setAnalyzed] = useState(false)
 
   // La vista previa usa una URL local de la foto; se libera al cambiarla.
@@ -50,19 +53,28 @@ export default function PlatePage() {
 
   const working = status.step === 'analyzing' || status.step === 'downloading'
 
+  // Si el modelo está ocupado, el backend espera su turno (hasta ~30 s): se avisa para que no parezca colgado.
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    if (status.step !== 'analyzing') return setSlow(false)
+    const timer = setTimeout(() => setSlow(true), 6000)
+    return () => clearTimeout(timer)
+  }, [status.step])
+
   /** Si el modelo de visión no está disponible, el reconocimiento básico (CLIP, en el navegador) propone los alimentos. */
-  const recognizeBasic = async (file: File, reason: string) => {
+  const recognizeBasic = async (file: File) => {
     const suggestions = await recognizeFoods(file, (progress) =>
       setStatus(progress < 1 ? { step: 'downloading', progress } : { step: 'analyzing' }),
     )
     setEntries(suggestions.map(({ name, probability }) => ({ name, probability, grams: defaultGrams(name) })))
-    setDish(null)
-    setFallbackNote(reason)
+    // Las sugerencias vienen de mayor a menor probabilidad: la primera es de lo que más tiene el plato.
+    setDish(suggestions[0] ? `Plato de ${suggestions[0].name.toLowerCase()}` : null)
+    setBasic(true)
   }
 
   const analyze = async (file: File) => {
     setStatus({ step: 'analyzing' })
-    setFallbackNote(null)
+    setBasic(false)
     try {
       const analysis = await analyzePlatePhoto(await photoToJpegDataUrl(file))
       setEntries(entriesFromAnalysis(analysis))
@@ -76,11 +88,7 @@ export default function PlatePage() {
       // Camino previsto (límite de Groq, sin conexión): se avisa en la consola, no es un error de la app.
       console.warn('El modelo de visión no respondió; se usa el reconocimiento básico:', error)
       try {
-        const reason =
-          error instanceof ApiError && error.status === 429
-            ? 'El análisis detallado está ocupado; usamos el reconocimiento básico con porciones habituales.'
-            : 'No hubo conexión con el análisis detallado; usamos el reconocimiento básico con porciones habituales.'
-        await recognizeBasic(file, reason)
+        await recognizeBasic(file)
         setStatus({ step: 'idle' })
       } catch (fallbackError) {
         console.error('Tampoco funcionó el reconocimiento básico:', fallbackError)
@@ -163,7 +171,8 @@ export default function PlatePage() {
                   <div role="status" className="text-sm text-muted-foreground">
                     {status.step === 'analyzing' && (
                       <span className="flex items-center gap-2">
-                        <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Analizando la foto…
+                        <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                        {slow ? 'Hay varias fotos en cola; unos segundos más…' : 'Analizando la foto…'}
                       </span>
                     )}
                     {status.step === 'downloading' && (
@@ -201,10 +210,13 @@ export default function PlatePage() {
                     <p className="font-heading text-4xl font-bold tabular-nums">
                       {whole.format(plate.totals.kcal)} <span className="text-xl font-semibold text-muted-foreground">kcal</span>
                     </p>
+                    {basic && <p className="mt-1 text-xs text-muted-foreground">Estimación aproximada con porciones habituales.</p>}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Peso del plato: <span className="font-semibold text-foreground tabular-nums">{whole.format(plate.totals.grams)} g</span>
-                  </p>
+                  {!basic && (
+                    <p className="text-sm text-muted-foreground">
+                      Peso del plato: <span className="font-semibold text-foreground tabular-nums">{whole.format(plate.totals.grams)} g</span>
+                    </p>
+                  )}
                 </div>
 
                 <dl className="grid grid-cols-2 gap-px bg-border/60 sm:grid-cols-4">
@@ -216,66 +228,67 @@ export default function PlatePage() {
                   ))}
                 </dl>
 
-                <div className="px-4 py-4 sm:px-6">
-                  <h2 className="text-base font-semibold">Lo que hay en tu plato</h2>
-                  {fallbackNote && <p className="mt-1 text-xs text-muted-foreground">{fallbackNote}</p>}
-                  {entries.length === 0 && (
-                    <p className="mt-2 text-sm text-muted-foreground">No vimos comida en la foto. Prueba con otra o agrega los alimentos a mano.</p>
-                  )}
-                  <ul className="mt-1 divide-y divide-border/60">
-                    {entries.map((entry, i) => {
-                      const cooked = !entry.per100g && (plateFoodByName.get(entry.name)?.cookedYield ?? 1) !== 1
-                      return (
-                        <li key={`${entry.name}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[15px] font-medium">{entry.name}</p>
-                            {entry.per100g && <p className="text-xs text-muted-foreground">Fuera de la tabla peruana · valor estimado</p>}
-                            {entry.probability !== undefined && (
-                              <p className="text-xs text-muted-foreground">Visto en la foto · {Math.round(entry.probability * 100)} %</p>
-                            )}
-                          </div>
-                          <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <span className="sr-only">Gramos de {entry.name}</span>
-                            <Input
-                              inputMode="decimal"
-                              value={entry.grams}
-                              onChange={(event) =>
-                                setEntries(entries.map((other, j) => (j === i ? { ...other, grams: event.target.value } : other)))
-                              }
-                              className="h-10 w-20 rounded-xl text-right text-base tabular-nums md:text-base"
-                            />
-                            g{cooked ? ' cocido' : ''}
-                          </label>
-                          <span className="w-20 text-right text-sm font-semibold tabular-nums">{whole.format(kcalByName.get(entry.name) ?? 0)} kcal</span>
-                          <button
-                            type="button"
-                            aria-label={`Quitar ${entry.name}`}
-                            onClick={() => setEntries(entries.filter((_, j) => j !== i))}
-                            className={`flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground ${pressableClass}`}
-                          >
-                            <X className="size-4" aria-hidden="true" />
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                {!basic && (
+                  <div className="px-4 py-4 sm:px-6">
+                    <h2 className="text-base font-semibold">Lo que hay en tu plato</h2>
+                    {entries.length === 0 && (
+                      <p className="mt-2 text-sm text-muted-foreground">No vimos comida en la foto. Prueba con otra o agrega los alimentos a mano.</p>
+                    )}
+                    <ul className="mt-1 divide-y divide-border/60">
+                      {entries.map((entry, i) => {
+                        const cooked = !entry.per100g && (plateFoodByName.get(entry.name)?.cookedYield ?? 1) !== 1
+                        return (
+                          <li key={`${entry.name}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[15px] font-medium">{entry.name}</p>
+                              {entry.per100g && <p className="text-xs text-muted-foreground">Fuera de la tabla peruana · valor estimado</p>}
+                              {entry.probability !== undefined && (
+                                <p className="text-xs text-muted-foreground">Visto en la foto · {Math.round(entry.probability * 100)} %</p>
+                              )}
+                            </div>
+                            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <span className="sr-only">Gramos de {entry.name}</span>
+                              <Input
+                                inputMode="decimal"
+                                value={entry.grams}
+                                onChange={(event) =>
+                                  setEntries(entries.map((other, j) => (j === i ? { ...other, grams: event.target.value } : other)))
+                                }
+                                className="h-10 w-20 rounded-xl text-right text-base tabular-nums md:text-base"
+                              />
+                              g{cooked ? ' cocido' : ''}
+                            </label>
+                            <span className="w-20 text-right text-sm font-semibold tabular-nums">{whole.format(kcalByName.get(entry.name) ?? 0)} kcal</span>
+                            <button
+                              type="button"
+                              aria-label={`Quitar ${entry.name}`}
+                              onClick={() => setEntries(entries.filter((_, j) => j !== i))}
+                              className={`flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground ${pressableClass}`}
+                            >
+                              <X className="size-4" aria-hidden="true" />
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
 
-                  <label className="mt-3 flex flex-col gap-1.5 text-sm">
-                    <span className="font-medium">¿Falta algo?</span>
-                    <select
-                      value=""
-                      onChange={(event) => addFood(event.target.value)}
-                      className={`h-11 cursor-pointer rounded-xl bg-card px-3 text-base text-foreground shadow-sm ring-1 ring-border/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${pressableClass}`}
-                    >
-                      <option value="">Agregar un alimento…</option>
-                      {available.map((food) => (
-                        <option key={food.name} value={food.name}>
-                          {food.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+                    <label className="mt-3 flex flex-col gap-1.5 text-sm">
+                      <span className="font-medium">¿Falta algo?</span>
+                      <select
+                        value=""
+                        onChange={(event) => addFood(event.target.value)}
+                        className={`h-11 cursor-pointer rounded-xl bg-card px-3 text-base text-foreground shadow-sm ring-1 ring-border/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${pressableClass}`}
+                      >
+                        <option value="">Agregar un alimento…</option>
+                        {available.map((food) => (
+                          <option key={food.name} value={food.name}>
+                            {food.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
               </section>
             )}
 
