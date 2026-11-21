@@ -1,6 +1,8 @@
 import {
+  Camera,
   LayoutDashboard,
   ListChecks,
+  MessageCircle,
   Salad,
   Sparkles,
   Store,
@@ -45,6 +47,18 @@ export const navItems: NavItem[] = [
     href: '/nutrition',
     icon: Sparkles,
     description: 'Ahorro y nutrición',
+  },
+  {
+    label: 'Chat nutricional',
+    href: '/chat',
+    icon: MessageCircle,
+    description: 'Pregunta sobre tu alimentación',
+  },
+  {
+    label: 'Foto del plato',
+    href: '/plate',
+    icon: Camera,
+    description: 'Calorías con una foto',
   },
   {
     label: 'Mi hogar',

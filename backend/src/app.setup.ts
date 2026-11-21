@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 
 /** HTTP setup shared by main.ts and the e2e tests. */
 export function setupApp(app: INestApplication) {
@@ -9,4 +10,6 @@ export function setupApp(app: INestApplication) {
     .map((origin) => origin.trim())
     .filter(Boolean);
   app.enableCors({ origin: origins });
+  // Las fotos del plato llegan en base64 (~150 KB); el límite por defecto de 100 KB no alcanza.
+  (app as NestExpressApplication).useBodyParser('json', { limit: '2mb' });
 }

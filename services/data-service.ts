@@ -6,6 +6,9 @@ import { mockUser } from '@/data/mock-users'
 import { buildShoppingList } from '@/lib/shopping'
 import type {
   CatalogFood,
+  ChatContext,
+  ChatMessage,
+  PlateAnalysis,
   Food,
   Household,
   ProductPrice,
@@ -99,4 +102,98 @@ export async function searchStoreProducts(
   signal?: AbortSignal,
 ): Promise<StoreProductGroup[]> {
   return getFromApi(`/products?q=${encodeURIComponent(query)}`, signal)
+}
+
+/** Una respuesta del asistente puede tardar: el modelo escribe unas 500 palabras como mucho. */
+const CHAT_TIMEOUT_MS = 60_000
+
+/**
+ * Pregunta al asistente nutricional (POST /chat, modelo de Hugging Face en el
+ * backend). La respuesta llega en partes: `onText` recibe cada una apenas el
+ * modelo la escribe, y la función devuelve el texto completo al terminar.
+ */
+export async function askNutritionChat(
+  messages: ChatMessage[],
+  context: ChatContext,
+  onText: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<string> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  if (!apiUrl) {
+    throw new Error('Falta NEXT_PUBLIC_API_URL: defínela en .env.local (ver .env.example)')
+  }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS)
+  const cancel = () => controller.abort()
+  signal?.addEventListener('abort', cancel, { once: true })
+  try {
+    const response = await fetch(`${apiUrl}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, context }),
+      signal: controller.signal,
+    })
+    if (!response.ok || !response.body) {
+      // El backend explica el problema en `message` (sin token, demasiadas preguntas, modelo caído).
+      const error = (await response.json().catch(() => null)) as { message?: string } | null
+      throw new Error(error?.message ?? `POST /chat respondió ${response.status}`)
+    }
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let answer = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      const text = decoder.decode(value, { stream: true })
+      if (text) {
+        answer += text
+        onText(text)
+      }
+    }
+    return answer
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', cancel)
+  }
+}
+
+/** Error del backend con su código HTTP y el mensaje que explica el problema. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message)
+  }
+}
+
+/** Analizar una foto toma unos segundos; más de 45 s es que algo falló. */
+const PLATE_TIMEOUT_MS = 45_000
+
+/**
+ * Manda la foto del plato (JPEG en base64, ya achicada) al backend, que le
+ * pregunta al modelo de visión qué alimentos hay y cuántos gramos.
+ */
+export async function analyzePlatePhoto(image: string): Promise<PlateAnalysis> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  if (!apiUrl) {
+    throw new Error('Falta NEXT_PUBLIC_API_URL: defínela en .env.local (ver .env.example)')
+  }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), PLATE_TIMEOUT_MS)
+  try {
+    const response = await fetch(`${apiUrl}/plate/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image }),
+      signal: controller.signal,
+    })
+    const body = (await response.json().catch(() => null)) as (PlateAnalysis & { message?: string }) | null
+    if (!response.ok || !body) {
+      throw new ApiError(response.status, body?.message ?? `POST /plate/analyze respondió ${response.status}`)
+    }
+    return body
+  } finally {
+    clearTimeout(timer)
+  }
 }
