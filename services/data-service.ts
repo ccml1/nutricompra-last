@@ -16,6 +16,8 @@ import type {
   StoreProductGroup,
   User,
   WeekPlan,
+  WeightEstimate,
+  WeightEstimateRequest,
 } from '@/types'
 
 /**
@@ -191,6 +193,36 @@ export async function analyzePlatePhoto(image: string): Promise<PlateAnalysis> {
     const body = (await response.json().catch(() => null)) as (PlateAnalysis & { message?: string }) | null
     if (!response.ok || !body) {
       throw new ApiError(response.status, body?.message ?? `POST /plate/analyze respondió ${response.status}`)
+    }
+    return body
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * Peso aproximado de la persona de la foto (POST /body/estimate-weight). La foto
+ * se analiza con el mismo modelo de visión que el plato y no se guarda. Si no
+ * sirve (otra persona, menor de edad, sin cuerpo entero…) el backend responde 422
+ * con un mensaje claro, que llega en el ApiError.
+ */
+export async function estimateWeightFromPhoto(request: WeightEstimateRequest): Promise<WeightEstimate> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  if (!apiUrl) {
+    throw new Error('Falta NEXT_PUBLIC_API_URL: defínela en .env.local (ver .env.example)')
+  }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), PLATE_TIMEOUT_MS)
+  try {
+    const response = await fetch(`${apiUrl}/body/estimate-weight`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      signal: controller.signal,
+    })
+    const body = (await response.json().catch(() => null)) as (WeightEstimate & { message?: string }) | null
+    if (!response.ok || !body) {
+      throw new ApiError(response.status, body?.message ?? `POST /body/estimate-weight respondió ${response.status}`)
     }
     return body
   } finally {

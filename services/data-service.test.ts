@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { analyzePlatePhoto, ApiError, askNutritionChat, searchStoreProducts } from './data-service'
+import { analyzePlatePhoto, ApiError, askNutritionChat, estimateWeightFromPhoto, searchStoreProducts } from './data-service'
 
 describe('searchStoreProducts', () => {
   const originalAny = AbortSignal.any
@@ -103,5 +103,35 @@ describe('analyzePlatePhoto', () => {
 
     expect(error).toBeInstanceOf(ApiError)
     expect(error).toMatchObject({ status: 429, message: 'Espera unos segundos.' })
+  })
+})
+
+describe('estimateWeightFromPhoto', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
+  const request = { image: 'data:image/jpeg;base64,AAAA', sex: 'female' as const, age: 34, heightCm: 160 }
+
+  it('envía la foto con sexo, edad y estatura, y devuelve el peso con su rango', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test')
+    const estimate = { weightKg: 61, lowKg: 56, highKg: 67 }
+    const fetchMock = vi.fn(async () => Response.json(estimate))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(estimateWeightFromPhoto(request)).resolves.toEqual(estimate)
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://api.test/body/estimate-weight',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify(request) }),
+    )
+  })
+
+  it('si la foto no sirve, el ApiError trae el código y el mensaje del backend', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://api.test')
+    const message = 'Parece que hay más de una persona en la foto.'
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ reason: 'multiple_people', message }, { status: 422 })))
+
+    await expect(estimateWeightFromPhoto(request)).rejects.toMatchObject({ status: 422, message })
   })
 })

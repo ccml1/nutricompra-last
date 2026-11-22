@@ -4,6 +4,7 @@ import {
   ListChecks,
   MessageCircle,
   Salad,
+  Scale,
   Sparkles,
   Store,
   UserCog,
@@ -59,6 +60,12 @@ export const navItems: NavItem[] = [
     href: '/plate',
     icon: Camera,
     description: 'Calorías con una foto',
+  },
+  {
+    label: 'Mi peso y calorías',
+    href: '/weight',
+    icon: Scale,
+    description: 'Peso estimado con una foto',
   },
   {
     label: 'Mi hogar',
