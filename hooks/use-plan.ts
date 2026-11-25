@@ -1,10 +1,10 @@
 'use client'
 
 import { useMemo } from 'react'
-import { mockMealsById } from '@/data/mock-meals'
 import { mockWeekPlan } from '@/data/mock-plan'
 import { summarizePlanBudget, type BudgetSummary } from '@/lib/budget'
 import { generateRecommendations } from '@/lib/recommendations'
+import { adaptPlan } from '@/lib/household-plan'
 import { householdPortions } from '@/lib/portions'
 import { buildShoppingList } from '@/lib/shopping'
 import type { Recommendation, ShoppingList, WeekPlan } from '@/types'
@@ -27,31 +27,20 @@ interface UsePlanResult {
  * derivados (presupuesto, lista de compras y recomendaciones).
  */
 export function usePlan(): UsePlanResult {
-  const weeklyBudget = useAuth((s) => s.household.weeklyBudget)
-  const members = useAuth((s) => s.household.members)
-  const children = useAuth((s) => s.household.children)
+  const household = useAuth((s) => s.household)
   const overrides = useMealPlan((s) => s.overrides)
 
   return useMemo(() => {
-    const portions = householdPortions({ members, children })
-    const plan: WeekPlan = {
-      ...mockWeekPlan,
-      budget: weeklyBudget,
-      portions,
-      days: mockWeekPlan.days.map((day) => ({
-        ...day,
-        desayuno: mockMealsById[overrides[`${day.day}-desayuno`] ?? day.desayuno.id] ?? day.desayuno,
-        almuerzo: mockMealsById[overrides[`${day.day}-almuerzo`] ?? day.almuerzo.id] ?? day.almuerzo,
-        cena: mockMealsById[overrides[`${day.day}-cena`] ?? day.cena.id] ?? day.cena,
-      })),
-    }
+    // El menú base se adapta al hogar: restricciones, preferencias, presupuesto, despensa y loncheras.
+    const plan = adaptPlan(mockWeekPlan, household, overrides)
+    const portions = plan.portions ?? householdPortions(household)
     return {
       plan,
       budget: summarizePlanBudget(plan),
-      shoppingList: { ...buildShoppingList(plan), budget: weeklyBudget },
+      shoppingList: { ...buildShoppingList(plan), budget: household.weeklyBudget },
       recommendations: generateRecommendations(plan),
       portions,
-      people: members,
+      people: household.members,
     }
-  }, [overrides, weeklyBudget, members, children])
+  }, [overrides, household])
 }

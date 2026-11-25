@@ -19,7 +19,7 @@ const categoryLabels: Record<FoodCategory, string> = {
   legumbres: 'Legumbres',
   cereales: 'Cereales y granos',
   lacteos: 'Lácteos',
-  otros: 'Otros',
+  otros: 'Despensa básica',
 }
 
 const categoryOrder: FoodCategory[] = ['frutas', 'verduras', 'carnes', 'legumbres', 'cereales', 'lacteos', 'otros']

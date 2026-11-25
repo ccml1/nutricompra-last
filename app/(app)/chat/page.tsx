@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MessageCircle, RotateCcw, Send, Square } from 'lucide-react'
+import { RichText } from '@/components/chat/rich-text'
 import { Button } from '@/components/ui/button'
 import { usePlan } from '@/hooks/use-plan'
 import { buildChatContext } from '@/lib/chat/context'
@@ -121,15 +122,21 @@ export default function ChatPage() {
               <div role="log" aria-live="polite" aria-label="Conversación" className="flex flex-1 flex-col gap-3">
                 {messages.map((message, i) => (
                   <div key={i} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <p
-                      className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${
                         message.role === 'user'
-                          ? 'rounded-br-md bg-primary text-primary-foreground'
+                          ? 'whitespace-pre-wrap rounded-br-md bg-primary text-primary-foreground'
                           : 'rounded-bl-md bg-card shadow-sm ring-1 ring-border/60'
                       }`}
                     >
-                      {message.content || <span className="text-muted-foreground">Escribiendo…</span>}
-                    </p>
+                      {!message.content ? (
+                        <span className="text-muted-foreground">Escribiendo…</span>
+                      ) : message.role === 'assistant' ? (
+                        <RichText source={message.content} />
+                      ) : (
+                        message.content
+                      )}
+                    </div>
                   </div>
                 ))}
                 {error && (

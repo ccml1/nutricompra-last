@@ -4,6 +4,20 @@ import type {
   Household,
 } from '@/types'
 
+/**
+ * Punto de partida de una cuenta nueva: el hogar más común en el Perú (2 adultos
+ * y 1 niño) con el presupuesto de la canasta básica. La persona lo ajusta al registrarse.
+ */
+export const newHousehold: Household = {
+  id: 'household-new',
+  members: 3,
+  children: 1,
+  weeklyBudget: 170,
+  preferences: ['equilibrada'],
+  restrictions: ['ninguna'],
+  goals: [],
+}
+
 export const mockHousehold: Household = {
   id: 'household-1',
   members: 4,

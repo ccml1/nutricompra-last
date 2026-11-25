@@ -34,6 +34,10 @@ export function buildShoppingList(plan: WeekPlan): ShoppingList {
       }
     }
   }
+  // Despensa básica y loncheras: ya vienen calculadas para todo el hogar.
+  for (const ing of plan.extras ?? []) {
+    costByFood.set(ing.foodId, (costByFood.get(ing.foodId) ?? 0) + ing.cost)
+  }
 
   const items: ShoppingItem[] = [...costByFood.entries()]
     .map(([foodId, totalCost]) => {
