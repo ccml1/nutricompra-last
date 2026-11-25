@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { budgetSuggestions } from './budget-suggestions'
 
 describe('budgetSuggestions', () => {
-  it('sugiere montos ajustado, recomendado y holgado según adultos y niños, redondeados a S/ 10', () => {
-    // 4 integrantes con 2 niños: 2 × 50 + 2 × 35 = 170.
-    expect(budgetSuggestions(4, 2).map((s) => s.amount)).toEqual([140, 170, 220])
-    // 1 adulto: 50 → 40, 50, 70 (65 se redondea a 70).
-    expect(budgetSuggestions(1, 0).map((s) => s.amount)).toEqual([40, 50, 70])
+  it('parte de la canasta básica: S/ 60 por adulto y S/ 45 por niño a la semana, redondeado a S/ 10', () => {
+    // 2 adultos y 1 niño: 2 × 60 + 45 = 165 → 140, 170, 210.
+    expect(budgetSuggestions(2, 1).map((s) => s.amount)).toEqual([140, 170, 210])
+    // 2 adultos y 2 niños: 210 → 180, 210, 270.
+    expect(budgetSuggestions(2, 2).map((s) => s.amount)).toEqual([180, 210, 270])
   })
 
-  it('no cuenta más niños que integrantes', () => {
-    expect(budgetSuggestions(2, 5)).toEqual(budgetSuggestions(2, 2))
+  it('siempre cuenta al menos un adulto', () => {
+    expect(budgetSuggestions(0, 0)).toEqual(budgetSuggestions(1, 0))
   })
 })

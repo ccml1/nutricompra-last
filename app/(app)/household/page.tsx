@@ -27,7 +27,7 @@ export default function HouseholdPage() {
               <div><CardTitle className="text-base text-primary-foreground">Resumen actual</CardTitle><p className="text-sm text-primary-foreground/75">La información que usa tu plan semanal</p></div>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl bg-primary-foreground/10 p-3"><p className="text-xs text-primary-foreground/70">Integrantes</p><p className="mt-1 text-xl font-bold">{household.members}</p></div>
+              <div className="rounded-xl bg-primary-foreground/10 p-3"><p className="text-xs text-primary-foreground/70">Adultos</p><p className="mt-1 text-xl font-bold">{household.members - household.children}</p></div>
               <div className="rounded-xl bg-primary-foreground/10 p-3"><p className="text-xs text-primary-foreground/70">Niños</p><p className="mt-1 text-xl font-bold">{household.children}</p></div>
               <div className="rounded-xl bg-primary-foreground/10 p-3"><p className="text-xs text-primary-foreground/70">Presupuesto semanal</p><p className="mt-1 text-xl font-bold">S/ {household.weeklyBudget.toFixed(0)}</p></div>
             </CardContent>
