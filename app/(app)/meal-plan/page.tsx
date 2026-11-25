@@ -5,8 +5,9 @@ import {
   ArrowRight,
   CalendarDays,
   ChevronRight,
+  Backpack,
   CircleDollarSign,
-  
+  PiggyBank,
   Utensils,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -117,9 +118,18 @@ export default function MealPlanPage() {
             </Card>
           </section>
 
+          {plan.economy && (
+            <p className="flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+              <PiggyBank className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
+              <span>
+                Ajustamos tu menú para que alcance tu presupuesto: cambiamos los platos más caros por opciones caseras y rendidoras. Si prefieres otro plato, cámbialo y lo respetamos.
+              </span>
+            </p>
+          )}
+
           <section aria-labelledby="weekly-plan-title">
             <div className="mb-4 flex items-end justify-between gap-4">
-              <div><p className="text-sm font-medium text-primary">21 comidas organizadas</p><h2 id="weekly-plan-title" className="font-heading text-xl font-bold tracking-tight">Tu semana de comidas</h2></div>
+              <h2 id="weekly-plan-title" className="font-heading text-xl font-bold tracking-tight">Tu semana de comidas</h2>
               <span className="hidden text-sm text-muted-foreground sm:block">Selecciona una comida para ver más</span>
             </div>
             <div className="flex flex-col gap-4">
@@ -133,6 +143,34 @@ export default function MealPlanPage() {
               ))}
             </div>
           </section>
+
+          {plan.lunchboxes && plan.lunchboxes.length > 0 && (
+            <section aria-labelledby="lunchbox-title">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h2 id="lunchbox-title" className="flex items-center gap-2 font-heading text-xl font-bold tracking-tight">
+                    <Backpack className="size-5 text-primary" aria-hidden />
+                    Loncheras del colegio
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    De lunes a viernes, para {plan.lunchboxChildren} {plan.lunchboxChildren === 1 ? 'niño' : 'niños'}. Ya están en tu lista de compras.
+                  </p>
+                </div>
+              </div>
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                {plan.lunchboxes.map(({ day, lunchbox }) => (
+                  <li key={day} className="flex flex-col gap-2 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/60">
+                    <p className="text-xs font-semibold text-primary">{weekdayLabels[day]}</p>
+                    <p className="text-sm font-semibold leading-snug">{lunchbox.name}</p>
+                    <p className="text-xs text-muted-foreground">{lunchbox.ingredients.map((ing) => ing.quantity).join(' · ')}</p>
+                    <p className="mt-auto pt-1 text-sm font-semibold tabular-nums">
+                      S/ {(lunchbox.cost * (plan.lunchboxChildren ?? 1)).toFixed(2)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       </main>
     </div>

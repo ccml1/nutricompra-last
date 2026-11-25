@@ -25,7 +25,9 @@ export function summarizePlanBudget(plan: WeekPlan): BudgetSummary {
       sum + day.desayuno.estimatedCost + day.almuerzo.estimatedCost + day.cena.estimatedCost,
     0,
   )
-  const estimatedTotal = perPerson * (plan.portions ?? 1)
+  // Más lo que no es de una comida (despensa básica, loncheras), ya calculado para el hogar.
+  const extras = (plan.extras ?? []).reduce((sum, ing) => sum + ing.cost, 0)
+  const estimatedTotal = perPerson * (plan.portions ?? 1) + extras
   // Comprando donde está más barato se aproxima el total optimizado en 12% menos.
   const optimizedTotal = estimatedTotal * 0.88
   return buildSummary(plan.budget, estimatedTotal, optimizedTotal)
