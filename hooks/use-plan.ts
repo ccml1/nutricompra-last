@@ -5,6 +5,7 @@ import { mockMealsById } from '@/data/mock-meals'
 import { mockWeekPlan } from '@/data/mock-plan'
 import { summarizePlanBudget, type BudgetSummary } from '@/lib/budget'
 import { generateRecommendations } from '@/lib/recommendations'
+import { householdPortions } from '@/lib/portions'
 import { buildShoppingList } from '@/lib/shopping'
 import type { Recommendation, ShoppingList, WeekPlan } from '@/types'
 import { useAuth } from '@/store/use-auth'
@@ -15,6 +16,10 @@ interface UsePlanResult {
   budget: BudgetSummary
   shoppingList: ShoppingList
   recommendations: Recommendation[]
+  /** Porciones por comida del hogar (adultos + niños × 0.75). */
+  portions: number
+  /** Personas del hogar. */
+  people: number
 }
 
 /**
@@ -23,12 +28,16 @@ interface UsePlanResult {
  */
 export function usePlan(): UsePlanResult {
   const weeklyBudget = useAuth((s) => s.household.weeklyBudget)
+  const members = useAuth((s) => s.household.members)
+  const children = useAuth((s) => s.household.children)
   const overrides = useMealPlan((s) => s.overrides)
 
   return useMemo(() => {
+    const portions = householdPortions({ members, children })
     const plan: WeekPlan = {
       ...mockWeekPlan,
       budget: weeklyBudget,
+      portions,
       days: mockWeekPlan.days.map((day) => ({
         ...day,
         desayuno: mockMealsById[overrides[`${day.day}-desayuno`] ?? day.desayuno.id] ?? day.desayuno,
@@ -41,6 +50,8 @@ export function usePlan(): UsePlanResult {
       budget: summarizePlanBudget(plan),
       shoppingList: { ...buildShoppingList(plan), budget: weeklyBudget },
       recommendations: generateRecommendations(plan),
+      portions,
+      people: members,
     }
-  }, [overrides, weeklyBudget])
+  }, [overrides, weeklyBudget, members, children])
 }

@@ -45,4 +45,10 @@ export interface WeekPlan {
   weekLabel: string
   budget: number
   days: DayPlan[]
+  /**
+   * Porciones que come el hogar en cada comida (adulto = 1, niño = 0.75). Los
+   * costos y cantidades de las comidas son por persona; el plan los multiplica por esto.
+   * Si falta, cuenta como 1.
+   */
+  portions?: number
 }

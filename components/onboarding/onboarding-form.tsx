@@ -80,8 +80,10 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
   const updateHousehold = useAuth((s) => s.updateHousehold)
   const household = useAuth((s) => s.household)
 
-  const [members, setMembers] = useState(household.members)
+  // El hogar se cuenta como adultos + niños; se guarda el total en `members`.
+  const [adults, setAdults] = useState(Math.max(1, household.members - household.children))
   const [children, setChildren] = useState(household.children)
+  const members = adults + children
   const [budget, setBudget] = useState(household.weeklyBudget)
   /** Lo que se ve escrito: se puede borrar y reescribir sin que el campo salte. */
   const [budgetText, setBudgetText] = useState(String(household.weeklyBudget))
@@ -90,7 +92,7 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
     setBudget(next)
     setBudgetText(String(next))
   }
-  const suggestions = budgetSuggestions(members, children)
+  const suggestions = budgetSuggestions(adults, children)
   const [preferences, setPreferences] = useState<DietaryPreference[]>(household.preferences)
   const [restrictions, setRestrictions] = useState<DietaryRestriction[]>(household.restrictions)
   const [error, setError] = useState<string | null>(null)
@@ -115,10 +117,6 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
     })
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? 'Revisa los datos ingresados')
-      return
-    }
-    if (children > members) {
-      setError('El número de niños no puede superar al de integrantes')
       return
     }
     setError(null)
@@ -149,8 +147,11 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
               Usaremos esto para calcular porciones y cantidades.
             </p>
           </div>
-          <Stepper label="Integrantes" value={members} min={1} max={15} onChange={setMembers} />
-          <Stepper label="Niños" value={children} min={0} max={15} onChange={setChildren} />
+          <Stepper label="Adultos" value={adults} min={1} max={10} onChange={setAdults} />
+          <Stepper label="Niños (menores de 12)" value={children} min={0} max={10} onChange={setChildren} />
+          <p className="text-sm text-muted-foreground">
+            En total son <span className="font-semibold text-foreground">{members} {members === 1 ? 'persona' : 'personas'}</span>.
+          </p>
         </section>
 
         <section className="flex flex-col gap-3">
@@ -214,8 +215,8 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
           />
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground">
-              Sugerido para {members} {members === 1 ? 'persona' : 'personas'}
-              {children > 0 ? ` (${children} ${children === 1 ? 'niño' : 'niños'})` : ''}:
+              Sugerido para {adults} {adults === 1 ? 'adulto' : 'adultos'}
+              {children > 0 ? ` y ${children} ${children === 1 ? 'niño' : 'niños'}` : ''}, según la canasta básica:
             </p>
             <div className="grid grid-cols-3 gap-2">
               {suggestions.map((suggestion) => {
