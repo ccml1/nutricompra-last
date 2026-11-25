@@ -11,6 +11,7 @@ import {
   dietaryPreferenceLabels,
   dietaryRestrictionLabels,
 } from '@/data/mock-households'
+import { budgetSuggestions, MAX_BUDGET, MIN_BUDGET } from '@/lib/budget-suggestions'
 import { formatCurrency } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { onboardingSchema } from '@/lib/validations'
@@ -82,6 +83,14 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
   const [members, setMembers] = useState(household.members)
   const [children, setChildren] = useState(household.children)
   const [budget, setBudget] = useState(household.weeklyBudget)
+  /** Lo que se ve escrito: se puede borrar y reescribir sin que el campo salte. */
+  const [budgetText, setBudgetText] = useState(String(household.weeklyBudget))
+  const setBudgetValue = (value: number) => {
+    const next = Math.min(MAX_BUDGET, Math.max(MIN_BUDGET, Math.round(value)))
+    setBudget(next)
+    setBudgetText(String(next))
+  }
+  const suggestions = budgetSuggestions(members, children)
   const [preferences, setPreferences] = useState<DietaryPreference[]>(household.preferences)
   const [restrictions, setRestrictions] = useState<DietaryRestriction[]>(household.restrictions)
   const [error, setError] = useState<string | null>(null)
@@ -149,27 +158,89 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
             <h2 className="font-display text-lg font-semibold text-foreground">
               Presupuesto semanal
             </h2>
-            <p className="text-sm text-muted-foreground">Cuánto puedes destinar a las compras.</p>
+            <p className="text-sm text-muted-foreground">Cuánto puedes gastar en comida cada semana. Elige una sugerencia o ajústalo.</p>
           </div>
-          <div className="relative max-w-xs">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-medium text-muted-foreground">
-              S/
-            </span>
-            <Input
-              type="number"
-              min={20}
-              max={2000}
-              step="0.01"
-              value={budget}
-              onChange={(event) => {
-                const nextBudget = event.currentTarget.valueAsNumber
-                if (Number.isFinite(nextBudget)) setBudget(nextBudget)
-              }}
-              aria-label="Presupuesto semanal en soles"
-              className="pl-9 font-display text-lg font-semibold"
-            />
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11 rounded-full"
+              onClick={() => setBudgetValue(budget - 10)}
+              disabled={budget <= MIN_BUDGET}
+              aria-label="Bajar S/ 10"
+            >
+              <Minus className="size-4" />
+            </Button>
+            <label className="relative flex-1">
+              <span className="sr-only">Presupuesto semanal en soles</span>
+              <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center font-display text-lg font-semibold text-muted-foreground">
+                S/
+              </span>
+              <Input
+                inputMode="decimal"
+                value={budgetText}
+                onChange={(event) => {
+                  const text = event.currentTarget.value.replace(/[^\d.,]/g, '')
+                  setBudgetText(text)
+                  const value = Number(text.replace(',', '.'))
+                  if (Number.isFinite(value) && value > 0) setBudget(value)
+                }}
+                onBlur={() => setBudgetValue(budget)}
+                className="h-14 rounded-2xl pl-12 text-center font-display text-2xl font-bold tabular-nums md:text-2xl"
+              />
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11 rounded-full"
+              onClick={() => setBudgetValue(budget + 10)}
+              disabled={budget >= MAX_BUDGET}
+              aria-label="Subir S/ 10"
+            >
+              <Plus className="size-4" />
+            </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Ingresa un monto entre S/ 20 y S/ 2,000.</p>
+          <input
+            type="range"
+            min={50}
+            max={1000}
+            step={10}
+            value={Math.min(1000, Math.max(50, budget))}
+            onChange={(event) => setBudgetValue(event.currentTarget.valueAsNumber)}
+            aria-label="Deslizar para ajustar el presupuesto"
+            className="w-full cursor-pointer accent-primary"
+          />
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground">
+              Sugerido para {members} {members === 1 ? 'persona' : 'personas'}
+              {children > 0 ? ` (${children} ${children === 1 ? 'niño' : 'niños'})` : ''}:
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {suggestions.map((suggestion) => {
+                const active = Math.round(budget) === suggestion.amount
+                return (
+                  <button
+                    key={suggestion.key}
+                    type="button"
+                    onClick={() => setBudgetValue(suggestion.amount)}
+                    aria-pressed={active}
+                    className={cn(
+                      'flex flex-col items-center rounded-xl border px-2 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      active ? 'border-primary bg-secondary text-secondary-foreground' : 'border-border bg-card hover:border-primary/50',
+                    )}
+                  >
+                    <span className="text-xs text-muted-foreground">{suggestion.label}</span>
+                    <span className="font-display text-base font-bold tabular-nums">{formatCurrency(suggestion.amount)}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Unos {formatCurrency(budget / Math.max(1, members))} por persona a la semana.
+            </p>
+          </div>
         </section>
 
         <section className="flex flex-col gap-3">
@@ -187,7 +258,7 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
                   onClick={() => togglePreference(value)}
                   aria-pressed={active}
                   className={cn(
-                    'rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                    'inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     active
                       ? 'border-primary bg-primary text-primary-foreground'
                       : 'border-border bg-card text-muted-foreground hover:border-primary/50',
@@ -215,7 +286,7 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
                   onClick={() => toggleRestriction(value)}
                   aria-pressed={active}
                   className={cn(
-                    'rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                    'inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     active
                       ? 'border-primary bg-secondary text-secondary-foreground'
                       : 'border-border bg-card text-muted-foreground hover:border-primary/50',

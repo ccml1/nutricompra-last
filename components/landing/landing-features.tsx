@@ -36,7 +36,7 @@ const features = [
     icon: Sparkles,
     title: 'Recomendaciones útiles',
     description:
-      'Consejos de ahorro y nutrición personalizados, listos para escalar con inteligencia artificial.',
+      'Consejos de ahorro y nutrición pensados para tu hogar.',
   },
 ]
 

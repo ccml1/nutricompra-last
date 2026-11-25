@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Camera, Loader2, Menu, RotateCcw, X } from 'lucide-react'
-import { AppSidebar } from '@/components/app/app-sidebar'
+import { Camera, Loader2, RotateCcw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
@@ -118,13 +117,9 @@ export default function PlatePage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <AppSidebar />
-      <main className="lg:pl-64">
+      <main>
         <header className="border-b bg-background/90 px-5 py-5 backdrop-blur lg:px-10">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
-            <Button variant="outline" size="icon" className="lg:hidden" aria-label="Abrir menú">
-              <Menu data-icon="inline-start" />
-            </Button>
             <div>
               <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Foto del plato</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">Toma una foto y te decimos sus calorías y nutrientes</p>
@@ -166,7 +161,7 @@ export default function PlatePage() {
 
                 <div className="flex flex-1 flex-col justify-center gap-4">
                   <p className="text-sm text-muted-foreground">
-                    Al elegir la foto, la analizamos al momento: qué alimentos hay y cuántos gramos, y calculamos las calorías con la Tabla Peruana de Composición de Alimentos.
+                    Elige o toma una foto y te decimos qué alimentos hay, cuántos gramos y cuántas calorías tiene tu plato.
                   </p>
                   <div role="status" className="text-sm text-muted-foreground">
                     {status.step === 'analyzing' && (
@@ -177,7 +172,7 @@ export default function PlatePage() {
                     )}
                     {status.step === 'downloading' && (
                       <div className="flex flex-col gap-2">
-                        <span>Preparando el reconocimiento básico (solo la primera vez, ~88 MB): {Math.round(status.progress * 100)} %</span>
+                        <span>Preparando el análisis (solo la primera vez): {Math.round(status.progress * 100)} %</span>
                         <Progress value={status.progress * 100} aria-label="Descarga del modelo" />
                       </div>
                     )}
@@ -241,7 +236,7 @@ export default function PlatePage() {
                           <li key={`${entry.name}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                             <div className="min-w-0 flex-1">
                               <p className="text-[15px] font-medium">{entry.name}</p>
-                              {entry.per100g && <p className="text-xs text-muted-foreground">Fuera de la tabla peruana · valor estimado</p>}
+                              {entry.per100g && <p className="text-xs text-muted-foreground">Valor estimado</p>}
                               {entry.probability !== undefined && (
                                 <p className="text-xs text-muted-foreground">Visto en la foto · {Math.round(entry.probability * 100)} %</p>
                               )}
@@ -293,7 +288,7 @@ export default function PlatePage() {
             )}
 
             <p className="px-4 text-center text-xs leading-relaxed text-muted-foreground">
-              La foto se envía para analizarla con Qwen3.8, un modelo abierto de Hugging Face, y no se guarda. Es una estimación: los gramos y las calorías pueden variar.
+              Tu foto no se guarda. Los gramos y las calorías son una estimación y pueden variar.
             </p>
           </div>
         </div>

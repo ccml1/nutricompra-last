@@ -1,11 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, CircleDollarSign, Clock3, Menu, Replace, Utensils } from 'lucide-react'
+import { ArrowLeft, CircleDollarSign, Clock3, Replace, Utensils } from 'lucide-react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { AppSidebar } from '@/components/app/app-sidebar'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { mockMealsById } from '@/data/mock-meals'
 import { mealTypeLabels } from '@/data/mock-plan'
@@ -42,15 +41,13 @@ export default function MealDetailPage() {
   if (!meal) {
     return (
       <div className="min-h-screen bg-muted/30">
-        <AppSidebar />
-        <main className="lg:pl-64">
+        <main>
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-5 py-20 text-center lg:px-10">
-            <p className="text-sm font-medium text-primary">Plan semanal</p>
             <h1 className="font-heading text-3xl font-bold">No encontramos esa comida</h1>
             <p className="max-w-md text-muted-foreground">La comida que buscas ya no está disponible en este plan.</p>
-            <Button asChild>
-              <Link href="/meal-plan">Volver al plan semanal</Link>
-            </Button>
+            <Link href="/meal-plan" className={buttonVariants()}>
+              Volver al menú semanal
+            </Link>
           </div>
         </main>
       </div>
@@ -59,14 +56,10 @@ export default function MealDetailPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <AppSidebar />
-      <main className="lg:pl-64">
+      <main>
         <header className="border-b bg-background/90 px-5 py-5 backdrop-blur lg:px-10">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="icon" className="lg:hidden" aria-label="Abrir menú">
-                <Menu data-icon="inline-start" />
-              </Button>
               <Link href="/meal-plan" className="hidden items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground sm:flex">
                 <ArrowLeft data-icon="inline-start" /> Plan semanal
               </Link>

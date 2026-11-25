@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Menu, MessageCircle, RotateCcw, Send, Square } from 'lucide-react'
-import { AppSidebar } from '@/components/app/app-sidebar'
+import { MessageCircle, RotateCcw, Send, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { usePlan } from '@/hooks/use-plan'
 import { buildChatContext } from '@/lib/chat/context'
@@ -84,13 +83,9 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <AppSidebar />
-      <main className="flex min-h-screen flex-col lg:pl-64">
+      <main className="flex min-h-[calc(100dvh-4rem)] flex-col">
         <header className="border-b bg-background/90 px-5 py-5 backdrop-blur lg:px-10">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
-            <Button variant="outline" size="icon" className="lg:hidden" aria-label="Abrir menú">
-              <Menu data-icon="inline-start" />
-            </Button>
             <div>
               <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Chat nutricional</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">Pregunta sobre tu menú, tus compras y los alimentos del catálogo</p>
@@ -107,7 +102,7 @@ export default function ChatPage() {
                 </span>
                 <div>
                   <p className="text-base font-semibold">¿En qué te ayudo con tu alimentación?</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Conozco tu menú semanal, tu lista de compras, tu presupuesto y la tabla peruana de alimentos.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Conozco tu menú semanal, tu lista de compras y tu presupuesto.</p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
                   {suggestions.map((suggestion) => (
@@ -187,7 +182,7 @@ export default function ChatPage() {
             </form>
 
             <p className="text-center text-xs leading-relaxed text-muted-foreground">
-              Respuestas de un modelo de lenguaje de Hugging Face. Puede equivocarse y no reemplaza a un nutricionista.
+              Las respuestas son orientativas y no reemplazan a un nutricionista.
             </p>
           </div>
         </div>

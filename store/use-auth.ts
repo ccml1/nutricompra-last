@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware'
 import { mockHousehold } from '@/data/mock-households'
 import { mockUser } from '@/data/mock-users'
 import type { Household, User } from '@/types'
+import { useGuide } from './use-guide'
 
 /**
  * Sesión simulada para el MVP (sin backend). Persiste en el navegador solo
@@ -41,7 +42,9 @@ export const useAuth = create<AuthState>()(
               : {}),
           },
         }),
-      register: (name, email) =>
+      register: (name, email) => {
+        // Una cuenta nueva empieza con la guía de primeros pasos desde cero.
+        useGuide.getState().reset()
         set({
           isAuthenticated: true,
           onboardingComplete: false,
@@ -52,7 +55,8 @@ export const useAuth = create<AuthState>()(
             email,
             avatarInitials: initials(name),
           },
-        }),
+        })
+      },
       completeOnboarding: (household) =>
         set({ household, onboardingComplete: true }),
       updateHousehold: (household) =>

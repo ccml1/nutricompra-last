@@ -1,7 +1,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, PiggyBank, Salad, Store } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const stats = [
   { icon: PiggyBank, value: 'S/ 180', label: 'presupuesto semanal' },
@@ -27,15 +28,13 @@ export function LandingHero() {
             lista de compras y compara precios entre mercados y supermercados.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <Button asChild size="lg">
-              <Link href="/register">
-                Crear mi plan
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/login">Ya tengo cuenta</Link>
-            </Button>
+            <Link href="/register" className={cn(buttonVariants({ size: 'lg' }), 'group h-11 px-5 text-[15px]')}>
+              Crear mi plan
+              <ArrowRight data-icon="inline-end" className="transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </Link>
+            <Link href="/login" className={cn(buttonVariants({ size: 'lg', variant: 'outline' }), 'h-11 px-5 text-[15px]')}>
+              Ya tengo cuenta
+            </Link>
           </div>
           <dl className="mt-4 grid w-full max-w-md grid-cols-3 gap-4 border-t border-border pt-6">
             {stats.map(({ icon: Icon, value, label }) => (

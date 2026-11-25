@@ -18,10 +18,9 @@ const jakarta = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'NutriCompra — Planifica, compara y ahorra',
+  title: 'NutriCompra',
   description:
-    'Plataforma de planificación alimentaria para hogares: organiza una alimentación nutritiva según tu presupuesto semanal, genera menús, crea listas de compras y compara precios.',
-  generator: 'v0.app',
+    'Organiza una alimentación nutritiva según tu presupuesto semanal: menús, listas de compras y comparación de precios para tu hogar.',
 }
 
 export const viewport: Viewport = {
@@ -38,7 +37,7 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${jakarta.variable} bg-background`}>
       <body className="font-sans antialiased">
         {children}
-        <Toaster position="top-center" richColors />
+        <Toaster position="bottom-center" richColors />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
