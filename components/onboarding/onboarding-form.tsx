@@ -87,12 +87,24 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
   const [budget, setBudget] = useState(household.weeklyBudget)
   /** Lo que se ve escrito: se puede borrar y reescribir sin que el campo salte. */
   const [budgetText, setBudgetText] = useState(String(household.weeklyBudget))
-  const setBudgetValue = (value: number) => {
+  /** Al registrarse, el presupuesto sigue la canasta básica del hogar hasta que la persona lo toca. */
+  const [budgetTouched, setBudgetTouched] = useState(mode === 'settings')
+  const applyBudget = (value: number) => {
     const next = Math.min(MAX_BUDGET, Math.max(MIN_BUDGET, Math.round(value)))
     setBudget(next)
     setBudgetText(String(next))
   }
+  const setBudgetValue = (value: number) => {
+    setBudgetTouched(true)
+    applyBudget(value)
+  }
+  const resize = (nextAdults: number, nextChildren: number) => {
+    setAdults(nextAdults)
+    setChildren(nextChildren)
+    if (!budgetTouched) applyBudget(budgetSuggestions(nextAdults, nextChildren)[1].amount)
+  }
   const suggestions = budgetSuggestions(adults, children)
+  const canasta = suggestions[1].amount
   const [preferences, setPreferences] = useState<DietaryPreference[]>(household.preferences)
   const [restrictions, setRestrictions] = useState<DietaryRestriction[]>(household.restrictions)
   const [error, setError] = useState<string | null>(null)
@@ -147,8 +159,8 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
               Usaremos esto para calcular porciones y cantidades.
             </p>
           </div>
-          <Stepper label="Adultos" value={adults} min={1} max={10} onChange={setAdults} />
-          <Stepper label="Niños (menores de 12)" value={children} min={0} max={10} onChange={setChildren} />
+          <Stepper label="Adultos" value={adults} min={1} max={10} onChange={(value) => resize(value, children)} />
+          <Stepper label="Niños (menores de 12)" value={children} min={0} max={10} onChange={(value) => resize(adults, value)} />
           <p className="text-sm text-muted-foreground">
             En total son <span className="font-semibold text-foreground">{members} {members === 1 ? 'persona' : 'personas'}</span>.
           </p>
@@ -184,6 +196,7 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
                 onChange={(event) => {
                   const text = event.currentTarget.value.replace(/[^\d.,]/g, '')
                   setBudgetText(text)
+                  setBudgetTouched(true)
                   const value = Number(text.replace(',', '.'))
                   if (Number.isFinite(value) && value > 0) setBudget(value)
                 }}
@@ -241,6 +254,12 @@ export function OnboardingForm({ mode = 'onboarding' }: { mode?: 'onboarding' | 
             <p className="text-xs text-muted-foreground">
               Unos {formatCurrency(budget / Math.max(1, members))} por persona a la semana.
             </p>
+            {budget < canasta && (
+              <p role="status" className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-900 ring-1 ring-amber-200">
+                Está por debajo de la canasta básica de tu hogar ({formatCurrency(canasta)}). No te preocupes: armaremos un menú más
+                económico, con menestras, huevo y pan del día, para que te alcance comiendo bien.
+              </p>
+            )}
           </div>
         </section>
 

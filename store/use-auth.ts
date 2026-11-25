@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { mockHousehold } from '@/data/mock-households'
+import { mockHousehold, newHousehold } from '@/data/mock-households'
 import { mockUser } from '@/data/mock-users'
 import type { Household, User } from '@/types'
 import { useGuide } from './use-guide'
@@ -43,11 +43,12 @@ export const useAuth = create<AuthState>()(
           },
         }),
       register: (name, email) => {
-        // Una cuenta nueva empieza con la guía de primeros pasos desde cero.
+        // Una cuenta nueva empieza con la guía de primeros pasos desde cero y un hogar neutro, no el de otra familia.
         useGuide.getState().reset()
         set({
           isAuthenticated: true,
           onboardingComplete: false,
+          household: newHousehold,
           user: {
             ...mockUser,
             name,
