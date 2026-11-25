@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { mockMealsById } from '@/data/mock-meals'
 import { mealTypeLabels } from '@/data/mock-plan'
 import { usePlan } from '@/hooks/use-plan'
+import { familyCost } from '@/lib/portions'
 import { findMealSlot, getMealReplacementCandidates } from '@/lib/recommendations'
 import { useMealPlan } from '@/store/use-meal-plan'
 import type { MealType, Weekday } from '@/types'
@@ -31,7 +32,7 @@ export default function MealDetailPage() {
   const params = useParams<{ mealId: string }>()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { plan } = usePlan()
+  const { plan, portions } = usePlan()
   const replaceMeal = useMealPlan((state) => state.replaceMeal)
   const meal = mockMealsById[params.mealId]
   const slot = meal ? findMealSlot(plan, meal.id, searchParams.get('day') ?? undefined, searchParams.get('type') as MealType | undefined) : null
@@ -98,7 +99,7 @@ export default function MealDetailPage() {
               <CardContent className="grid gap-4 p-6 sm:grid-cols-2 sm:p-8">
                 <div className="flex items-center gap-3">
                   <CircleDollarSign className="size-5 text-primary" aria-hidden />
-                  <div><p className="text-xs text-muted-foreground">Costo estimado</p><p className="font-heading text-2xl font-bold">S/ {meal.estimatedCost.toFixed(2)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Para tu familia</p><p className="font-heading text-2xl font-bold tabular-nums">S/ {familyCost(meal.estimatedCost, portions).toFixed(2)}</p><p className="text-xs tabular-nums text-muted-foreground">S/ {meal.estimatedCost.toFixed(2)} por persona</p></div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Clock3 className="size-5 text-primary" aria-hidden />

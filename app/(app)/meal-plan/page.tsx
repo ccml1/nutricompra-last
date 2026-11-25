@@ -16,6 +16,7 @@ import { Progress } from '@/components/ui/progress'
 import { mealTypeLabels, weekdayLabels } from '@/data/mock-plan'
 import { budgetLevelLabels } from '@/lib/budget'
 import { usePlan } from '@/hooks/use-plan'
+import { familyCost } from '@/lib/portions'
 import type { Meal } from '@/types'
 
 const mealTypes = ['desayuno', 'almuerzo', 'cena'] as const
@@ -26,7 +27,7 @@ const healthStyles = {
   bajo: 'border-destructive/20 bg-destructive/10 text-destructive',
 } as const
 
-function MealCard({ meal, day }: { meal: Meal; day: string }) {
+function MealCard({ meal, day, portions }: { meal: Meal; day: string; portions: number }) {
   return (
     <article className="flex min-h-44 flex-col rounded-xl border bg-background p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
@@ -45,8 +46,9 @@ function MealCard({ meal, day }: { meal: Meal; day: string }) {
       <h3 className="mt-4 line-clamp-2 text-sm font-bold leading-snug">{meal.name}</h3>
       <div className="mt-auto flex items-end justify-between gap-3 pt-4">
         <div>
-          <p className="text-xs text-muted-foreground">Costo estimado</p>
-          <p className="mt-0.5 font-heading text-lg font-bold">S/ {meal.estimatedCost.toFixed(2)}</p>
+          <p className="text-xs text-muted-foreground">Para tu familia</p>
+          <p className="mt-0.5 font-heading text-lg font-bold tabular-nums">S/ {familyCost(meal.estimatedCost, portions).toFixed(2)}</p>
+          <p className="text-xs tabular-nums text-muted-foreground">S/ {meal.estimatedCost.toFixed(2)} por persona</p>
         </div>
         <Link
           href={`/meal-plan/${meal.id}?day=${day}&type=${meal.type}`}
@@ -61,7 +63,7 @@ function MealCard({ meal, day }: { meal: Meal; day: string }) {
 }
 
 export default function MealPlanPage() {
-  const { plan, budget } = usePlan()
+  const { plan, budget, portions, people } = usePlan()
   const progress = Math.min(budget.usedPercent, 100)
 
   return (
@@ -87,7 +89,7 @@ export default function MealPlanPage() {
               <CardHeader className="flex-row items-start justify-between pb-3">
                 <div>
                   <CardTitle id="plan-summary-title" className="text-base text-primary-foreground/85">Costo estimado del plan</CardTitle>
-                  <p className="mt-1 text-sm text-primary-foreground/70">Las 21 comidas de esta semana</p>
+                  <p className="mt-1 text-sm text-primary-foreground/70">Las 21 comidas de la semana para {people} {people === 1 ? 'persona' : 'personas'}</p>
                 </div>
                 <CircleDollarSign className="size-6 text-primary-foreground/70" aria-hidden />
               </CardHeader>
@@ -125,7 +127,7 @@ export default function MealPlanPage() {
                 <Card key={day.day}>
                   <CardHeader className="border-b bg-muted/20 px-5 py-4"><CardTitle className="text-lg">{weekdayLabels[day.day]}</CardTitle></CardHeader>
                   <CardContent className="grid gap-3 p-4 md:grid-cols-3">
-                    {mealTypes.map((type) => <MealCard key={`${day.day}-${type}`} day={day.day} meal={day[type]} />)}
+                    {mealTypes.map((type) => <MealCard key={`${day.day}-${type}`} day={day.day} meal={day[type]} portions={portions} />)}
                   </CardContent>
                 </Card>
               ))}

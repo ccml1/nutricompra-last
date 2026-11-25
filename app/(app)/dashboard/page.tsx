@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { mealTypeLabels, weekdayLabels } from '@/data/mock-plan'
 import { usePlan } from '@/hooks/use-plan'
 import { formatCurrency } from '@/lib/format'
+import { familyCost } from '@/lib/portions'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/store/use-auth'
 import { useGuide } from '@/store/use-guide'
@@ -88,7 +89,7 @@ function FirstSteps() {
 }
 
 export default function DashboardPage() {
-  const { plan, budget, recommendations } = usePlan()
+  const { plan, budget, recommendations, portions, people } = usePlan()
   const firstName = useAuth((s) => s.user?.firstName)
   const over = budget.remaining < 0
   const upcoming = plan.days
@@ -121,7 +122,7 @@ export default function DashboardPage() {
         <section aria-labelledby="budget-title" className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
           <div className="rounded-2xl bg-primary p-6 text-primary-foreground shadow-sm">
             <h2 id="budget-title" className="text-sm font-medium text-primary-foreground/85">
-              Gasto de la semana
+              Gasto de la semana para {people} {people === 1 ? 'persona' : 'personas'}
             </h2>
             <p className="mt-2 font-heading text-4xl font-bold tabular-nums sm:text-5xl">
               {formatCurrency(budget.estimatedTotal)}
@@ -162,7 +163,7 @@ export default function DashboardPage() {
             <CardHeader className="flex-row items-center justify-between">
               <div>
                 <CardTitle>Tu menú de la semana</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">Desayuno, almuerzo y cena de cada día</p>
+                <p className="mt-1 text-sm text-muted-foreground">Costo de cada comida para {people} {people === 1 ? 'persona' : 'personas'}</p>
               </div>
               <Link href="/meal-plan" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
                 Editar menú <ChevronRight data-icon="inline-end" />
@@ -178,7 +179,7 @@ export default function DashboardPage() {
                         <div key={meal.id} className="rounded-lg bg-background p-2 shadow-sm">
                           <p className="truncate text-[10px] font-medium text-muted-foreground">{mealTypeLabels[meal.type]}</p>
                           <p className="mt-1 line-clamp-2 text-xs font-semibold leading-snug">{meal.name}</p>
-                          <p className="mt-1 text-[10px] tabular-nums text-muted-foreground">S/ {meal.estimatedCost.toFixed(2)}</p>
+                          <p className="mt-1 text-[10px] tabular-nums text-muted-foreground">S/ {familyCost(meal.estimatedCost, portions).toFixed(2)}</p>
                         </div>
                       ))}
                     </div>
@@ -205,7 +206,7 @@ export default function DashboardPage() {
                     </p>
                     <p className="truncate text-sm font-semibold">{meal.name}</p>
                   </div>
-                  <span className="text-xs font-medium tabular-nums text-muted-foreground">S/ {meal.estimatedCost.toFixed(2)}</span>
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground">S/ {familyCost(meal.estimatedCost, portions).toFixed(2)}</span>
                 </div>
               ))}
             </CardContent>
