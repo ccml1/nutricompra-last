@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -37,10 +38,13 @@ export function UserMenu() {
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          <span className="block text-sm font-medium">{user?.name}</span>
-          <span className="block text-xs font-normal text-muted-foreground">{user?.email}</span>
-        </DropdownMenuLabel>
+        {/* En Base UI la etiqueta de un menú tiene que ir dentro de un grupo; suelta, el menú se cae. */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            <span className="block text-sm font-medium text-foreground">{user?.name}</span>
+            <span className="block text-xs font-normal text-muted-foreground">{user?.email}</span>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/household" />} className="gap-2 px-2 py-2">
           <UserCog className="size-4" aria-hidden />
