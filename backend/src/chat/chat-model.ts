@@ -33,11 +33,23 @@ export interface ChatModelConfig {
 }
 
 /** Qué servicio y modelo usar según las variables de entorno; null si no hay ninguna clave. */
-export function chatModelConfig(env: Record<string, string | undefined>): ChatModelConfig | null {
+export function chatModelConfig(
+  env: Record<string, string | undefined>,
+): ChatModelConfig | null {
   const groqKey = env.GROQ_API_KEY?.trim();
-  if (groqKey) return { token: groqKey, provider: 'groq', model: env.GROQ_CHAT_MODEL?.trim() || GROQ_MODEL };
+  if (groqKey)
+    return {
+      token: groqKey,
+      provider: 'groq',
+      model: env.GROQ_CHAT_MODEL?.trim() || GROQ_MODEL,
+    };
   const hfToken = env.HF_TOKEN?.trim();
-  if (hfToken) return { token: hfToken, provider: 'auto', model: env.HF_CHAT_MODEL?.trim() || HF_MODEL };
+  if (hfToken)
+    return {
+      token: hfToken,
+      provider: 'auto',
+      model: env.HF_CHAT_MODEL?.trim() || HF_MODEL,
+    };
   return null;
 }
 
@@ -46,7 +58,11 @@ export function chatModelConfig(env: Record<string, string | undefined>): ChatMo
  * Con una clave de Groq, el cliente llama a Groq directamente con el modelo de
  * Hugging Face indicado; con un token de Hugging Face, pasa por su router.
  */
-export function huggingFaceChatModel({ token, provider, model }: ChatModelConfig): ChatModel {
+export function huggingFaceChatModel({
+  token,
+  provider,
+  model,
+}: ChatModelConfig): ChatModel {
   const client = new InferenceClient(token);
   return {
     async *stream(messages) {
@@ -57,7 +73,9 @@ export function huggingFaceChatModel({ token, provider, model }: ChatModelConfig
         max_tokens: MAX_TOKENS,
         temperature: 0.4,
         // gpt-oss "piensa" antes de responder; poco basta para preguntas de nutrición y responde antes.
-        ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
+        ...(model.startsWith('openai/gpt-oss')
+          ? { reasoning_effort: 'low' }
+          : {}),
       });
       for await (const chunk of chunks) {
         const text = chunk.choices?.[0]?.delta?.content;
@@ -67,10 +85,79 @@ export function huggingFaceChatModel({ token, provider, model }: ChatModelConfig
   };
 }
 
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+/** El texto de cada evento `data: {...}` del streaming (SSE) de una API compatible con OpenAI. */
+export async function* sseDeltas(
+  body: ReadableStream<Uint8Array>,
+): AsyncIterable<string> {
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for await (const bytes of body as unknown as AsyncIterable<Uint8Array>) {
+    buffer += decoder.decode(bytes, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      const data = line.trim().replace(/^data:\s*/, '');
+      if (!line.trim().startsWith('data:') || data === '[DONE]') continue;
+      try {
+        const text = (
+          JSON.parse(data) as { choices?: { delta?: { content?: string } }[] }
+        ).choices?.[0]?.delta?.content;
+        if (text) yield text;
+      } catch {
+        // Un evento incompleto o de control: se ignora.
+      }
+    }
+  }
+}
+
+/**
+ * Modelo de chat servido por Groq, llamado directamente con su API compatible con
+ * OpenAI. No depende de la tabla de proveedores de Hugging Face, que puede dejar de
+ * listar un modelo aunque Groq lo siga sirviendo.
+ */
+export function groqChatModel(
+  { token, model }: ChatModelConfig,
+  fetchFn: typeof fetch = fetch,
+): ChatModel {
+  return {
+    async *stream(messages) {
+      const response = await fetchFn(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          max_tokens: MAX_TOKENS,
+          temperature: 0.4,
+          stream: true,
+          ...(model.startsWith('openai/gpt-oss')
+            ? { reasoning_effort: 'low' }
+            : {}),
+        }),
+      });
+      if (!response.ok || !response.body) {
+        const detail = await response.text().catch(() => '');
+        throw new Error(
+          `Groq respondió ${response.status}: ${detail.slice(0, 200)}`,
+        );
+      }
+      yield* sseDeltas(response.body);
+    },
+  };
+}
+
 export const chatModelProvider = {
   provide: CHAT_MODEL,
   useFactory: (): ChatModel | null => {
     const config = chatModelConfig(process.env);
-    return config ? huggingFaceChatModel(config) : null;
+    if (!config) return null;
+    return config.provider === 'groq'
+      ? groqChatModel(config)
+      : huggingFaceChatModel(config);
   },
 };
