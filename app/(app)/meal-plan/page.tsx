@@ -6,10 +6,9 @@ import {
   CalendarDays,
   ChevronRight,
   CircleDollarSign,
-  Menu,
+  
   Utensils,
 } from 'lucide-react'
-import { AppSidebar } from '@/components/app/app-sidebar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,14 +66,10 @@ export default function MealPlanPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <AppSidebar />
-      <main className="lg:pl-64">
+      <main>
         <header className="border-b bg-background/90 px-5 py-5 backdrop-blur lg:px-10">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="icon" className="lg:hidden" aria-label="Abrir menú">
-                <Menu data-icon="inline-start" />
-              </Button>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Organiza tus comidas</p>
                 <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Plan semanal</h1>

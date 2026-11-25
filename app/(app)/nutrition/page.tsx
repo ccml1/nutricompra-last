@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Apple, Beef, Carrot, ChevronRight, CircleDot, Egg, Fish, Menu, Search, Wheat, type LucideIcon } from 'lucide-react'
-import { AppSidebar } from '@/components/app/app-sidebar'
+import { Apple, Beef, Carrot, ChevronRight, CircleDot, Egg, Fish, Search, Wheat, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { mockMeals } from '@/data/mock-meals'
 import { mealTypeLabels } from '@/data/mock-plan'
@@ -199,13 +198,9 @@ export default function NutritionPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <AppSidebar />
-      <main className="lg:pl-64">
+      <main>
         <header className="border-b bg-background/90 px-5 py-5 backdrop-blur lg:px-10">
           <div className="mx-auto flex max-w-7xl items-center gap-3">
-            <Button variant="outline" size="icon" className="lg:hidden" aria-label="Abrir menú">
-              <Menu data-icon="inline-start" />
-            </Button>
             <div>
               <p className="text-sm font-medium text-primary">Decisiones más informadas</p>
               <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Información nutricional</h1>
@@ -293,7 +288,7 @@ export default function NutritionPage() {
 
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader><CardTitle>Usa esta información para planificar</CardTitle><CardDescription>Compara opciones del menú y elige las que mejor se ajusten a tus preferencias y presupuesto.</CardDescription></CardHeader>
-            <CardContent><p className="text-sm text-muted-foreground">Los valores son aproximados y corresponden a los datos demostrativos de NutriCompra. No sustituyen orientación profesional.</p></CardContent>
+            <CardContent><p className="text-sm text-muted-foreground">Los valores son aproximados y no sustituyen la orientación de un profesional de salud.</p></CardContent>
           </Card>
         </div>
       </div>

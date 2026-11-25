@@ -14,7 +14,6 @@ export default function OnboardingPage() {
       </header>
       <main className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6">
         <div className="mb-8">
-          <p className="text-sm font-medium text-primary">Configuración inicial</p>
           <h1 className="text-balance font-display text-3xl font-bold tracking-tight text-foreground">
             Cuéntanos sobre tu hogar
           </h1>

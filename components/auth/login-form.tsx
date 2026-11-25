@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -21,7 +22,7 @@ export function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: 'piero.quispe@nutricompra.pe', password: 'demo123' },
+    defaultValues: { email: '', password: '' },
   })
 
   const onSubmit = (values: LoginValues) => {
@@ -47,12 +48,9 @@ export function LoginForm() {
       </Button>
       <p className="text-center text-sm text-muted-foreground">
         ¿No tienes cuenta?{' '}
-        <a href="/register" className="font-medium text-primary hover:underline">
+        <Link href="/register" className="font-medium text-primary hover:underline">
           Regístrate
-        </a>
-      </p>
-      <p className="rounded-lg bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
-        Demo: usa las credenciales precargadas o cualquier correo válido.
+        </Link>
       </p>
     </form>
   )

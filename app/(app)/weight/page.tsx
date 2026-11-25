@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Camera, Loader2, Menu, Scale } from 'lucide-react'
-import { AppSidebar } from '@/components/app/app-sidebar'
+import { Camera, Loader2, Scale } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
@@ -92,13 +91,9 @@ export default function WeightPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <AppSidebar />
-      <main className="lg:pl-64">
+      <main>
         <header className="border-b bg-background/90 px-5 py-5 backdrop-blur lg:px-10">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
-            <Button variant="outline" size="icon" className="lg:hidden" aria-label="Abrir menú">
-              <Menu data-icon="inline-start" />
-            </Button>
             <div>
               <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Mi peso y calorías</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">Estima tu peso con una foto y mira cuánto necesitas comer</p>
@@ -314,7 +309,7 @@ export default function WeightPage() {
             )}
 
             <p className="px-4 text-center text-xs leading-relaxed text-muted-foreground">
-              La foto se analiza con Qwen3.8, un modelo abierto de Hugging Face, y no se guarda. Es una estimación visual para adultos: no reemplaza una balanza ni el consejo de un profesional de salud.
+              Tu foto no se guarda. Es una estimación para adultos: no reemplaza una balanza ni el consejo de un profesional de salud.
             </p>
           </div>
         </div>

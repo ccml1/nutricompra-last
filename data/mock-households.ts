@@ -19,17 +19,26 @@ export const mockHousehold: Household = {
 }
 
 export const dietaryPreferenceLabels: Record<DietaryPreference, string> = {
-  equilibrada: 'Alimentación equilibrada',
-  vegetariana: 'Vegetariana',
-  'alta-proteina': 'Alta en proteína',
+  equilibrada: 'Equilibrada',
   economica: 'Económica',
+  'alta-proteina': 'Alta en proteína',
+  'mas-verduras': 'Más frutas y verduras',
+  'mas-pescado': 'Más pescado',
   'baja-en-grasa': 'Baja en grasa',
+  'baja-en-azucar': 'Baja en azúcar',
+  rapida: 'Rápida de preparar',
+  vegetariana: 'Vegetariana',
+  vegana: 'Vegana',
 }
 
 export const dietaryRestrictionLabels: Record<DietaryRestriction, string> = {
-  'sin-gluten': 'Sin gluten',
+  ninguna: 'Sin restricciones',
+  'sin-gluten': 'Sin gluten (celiaquía)',
   'sin-lactosa': 'Sin lactosa',
   'sin-mani': 'Sin maní',
   'sin-mariscos': 'Sin mariscos',
-  ninguna: 'Sin restricciones',
+  'sin-huevo': 'Sin huevo',
+  'sin-cerdo': 'Sin cerdo',
+  'poca-sal': 'Poca sal (presión alta)',
+  'sin-azucar': 'Sin azúcar añadida (diabetes)',
 }

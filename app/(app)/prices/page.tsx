@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ArrowUpRight, Menu, Search, SearchX, WifiOff } from 'lucide-react'
-import { AppSidebar } from '@/components/app/app-sidebar'
+import { ArrowLeft, ArrowUpRight, Search, SearchX, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePlan } from '@/hooks/use-plan'
@@ -154,13 +153,9 @@ export default function PricesPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      <AppSidebar />
-      <main className="lg:pl-64">
+      <main>
         <header className="border-b bg-background/90 px-5 py-5 backdrop-blur lg:px-10">
           <div className="mx-auto flex max-w-4xl items-center gap-3">
-            <Button variant="outline" size="icon" className="lg:hidden" aria-label="Abrir menú">
-              <Menu data-icon="inline-start" />
-            </Button>
             <div>
               <Link href="/shopping-list" className="mb-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
                 <ArrowLeft data-icon="inline-start" /> Volver a la lista
